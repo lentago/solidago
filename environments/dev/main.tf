@@ -10,7 +10,7 @@ terraform {
 }
 
 provider "aws" {
-  region  = var.aws_region
+  region = var.aws_region
 
   default_tags {
     tags = {
@@ -119,6 +119,14 @@ module "ecs" {
 
   task_execution_role_arn = module.iam.ecs_task_execution_role_arn
   task_role_arn           = module.iam.ecs_task_role_arn
+
+  # aws_ecs_service has an implicit dep on the target group ARN but not on
+  # the listener that binds the TG to the ALB. On cold starts where ACM
+  # validation delays the HTTPS listener, ECS CreateService races and
+  # fails with "target group does not have an associated load balancer".
+  # Issue #50. The dep lives here because the ordering is between two
+  # sibling modules — the ecs module on its own can't express it.
+  depends_on = [module.alb]
 }
 module "ecs_autoscaling" {
   source = "../../modules/ecs-autoscaling"
