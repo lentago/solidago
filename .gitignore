@@ -37,3 +37,4 @@ override.tf.json
 terraform.rc
 
 app/ice_cream_site/src/content/recipes/
+app/ice_cream_site/src/assets/recipes/
