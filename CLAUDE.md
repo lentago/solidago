@@ -30,13 +30,9 @@ terraform fmt -check -recursive
 # View outputs
 terraform output
 
-# Push container image to ECR
-aws ecr get-login-password --region us-east-1 --profile foundry | \
-  docker login --username AWS --password-stdin $(terraform output -raw ecr_repository_url)
-docker build -t my-app ./app
-docker tag my-app:latest $(terraform output -raw ecr_repository_url):latest
-docker push $(terraform output -raw ecr_repository_url):latest
 ```
+
+Container image builds happen in the workload repo's deploy workflow (see [ice-cream-book](https://github.com/PitziLabs/ice-cream-book)/.github/workflows/deploy.yml), not from this repo. This repo manages the ECR registry, ECS cluster/service, and IAM trust — not the image itself.
 
 All Terraform commands run from `environments/dev/` (the only environment entry point currently).
 
@@ -112,7 +108,7 @@ When implementation is complete, open a pull request as the final step. Do not s
 - `environments/dev/outputs.tf` — what each module exposes
 - `environments/dev/backend.tf` — remote state configuration (S3 + DynamoDB)
 - `modules/*/variables.tf` — what each module accepts
-- `app/` — container application: Astro static site built with Node, served by Nginx on port 8080 (health check at `/health`)
+- `modules/iam/main.tf` — OIDC roles. `foundry-dev-github-actions` (trusts the workload repo `ice-cream-book` via `var.app_github_repo`) deploys containers and updates ECS; `foundry-dev-github-actions-terraform` (trusts this repo's `terraform` environment) runs the Terraform pipeline. The split keeps platform mutations and workload deploys on separate credentials.
 
 ## Project Phases
 

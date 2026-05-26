@@ -1,11 +1,18 @@
 # Phase 6: CI/CD Pipeline — Reference Notes
 
+> **Historical reference.** This document describes the pre-#55 architecture where the Astro application and its deploy workflow lived in `foundry-platform-demo/app/` and ran from this repo. After the platform/workload split (issue #55, completed 2026-05-25), the application source and deploy workflow live in [`PitziLabs/ice-cream-book`](https://github.com/PitziLabs/ice-cream-book). The OIDC role and ECR/ECS resources described here still exist and are still the right names — the workflow that uses them just moved repos.
+>
+> For the current architecture, see [`WORKLOAD_RELATIONSHIP.md`](WORKLOAD_RELATIONSHIP.md) in this repo and `.github/workflows/deploy.yml` in `ice-cream-book`.
+>
+> The rest of this document is preserved for build-history context. References to `app/`, `app/ice_cream_site/`, `sync_recipes.py`, `RECIPE_SOURCE`, and the cross-repo dispatch pattern reflect that historical state and no longer match the live code.
+
 ## Status
 
 **App deployment pipeline: ✅ COMPLETE and operational**
 **Terraform infra pipeline: ⬜ Planned (Phase 6 part 2)**
 
 First successful automated deployment: 2026-03-19
+First end-to-end deploy from `ice-cream-book` (post-#55 split): 2026-05-25
 
 ---
 

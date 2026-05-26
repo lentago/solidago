@@ -26,9 +26,9 @@ A three-tier web application running on AWS, fully managed by Terraform:
 
 **Cost Management:** AWS Budgets with SNS alerts at 50%, 80%, and 100% of a $100/month threshold.
 
-**CI/CD:** Two GitHub Actions pipelines with OIDC authentication (no stored credentials):
-- **App deploy** — builds and deploys the container on content changes, with cross-repo dispatch from the content source repository
-- **Terraform** — plans on PR (with plan output posted as a PR comment), applies on merge to main. Separate IAM role scoped to the `terraform` GitHub environment via OIDC sub-claim.
+**CI/CD:** This repo runs one Terraform pipeline; workload deploys run from their own repos.
+- **Terraform** — plans on PR (with plan output posted as a PR comment), applies on merge to main. IAM role scoped to the `terraform` GitHub environment via OIDC sub-claim, so only this workflow can mutate infrastructure.
+- **Workload deploys** — each workload (currently [ice-cream-book](https://github.com/PitziLabs/ice-cream-book)) builds and deploys from its own repository, assuming the platform-owned `foundry-dev-github-actions` IAM role via OIDC. The role's trust policy is scoped to the workload repo, so only that repo's workflows can push to ECR and update ECS.
 
 ## Architecture
 
@@ -104,12 +104,12 @@ foundry-platform-demo/
 │   └── waf/                     # WAFv2 Web ACL + ALB association
 ├── .github/
 │   └── workflows/
-│       ├── deploy.yml           # App deploy pipeline
-│       ├── terraform.yml        # Terraform plan/apply pipeline
-│       └── dispatch-deploy.yml  # Cross-repo dispatch receiver
+│       └── terraform.yml        # Terraform plan/apply pipeline
 └── docs/
     └── BOOTSTRAP.md             # Deployment runbook (start here)
 ```
+
+Workload code (the Astro application, its Dockerfile, and its deploy workflow) lives in [ice-cream-book](https://github.com/PitziLabs/ice-cream-book), not in this repo.
 
 ## Design Decisions
 
@@ -139,7 +139,7 @@ For a portfolio project demonstrating AWS skills, native CloudWatch is the right
 
 ### Platform, Not a Single-App Deployment
 
-The infrastructure is deliberately decoupled from the application it hosts. The ECS cluster, ALB, data tier, and CI/CD pipelines are general-purpose — any containerized application can slot in by pushing an image to ECR and updating the task definition. A static Astro site, a Node.js API, a Python Flask service, or a scheduled batch job would all deploy through the same pipeline with different Dockerfiles. The cross-repo dispatch pattern already demonstrates this: content lives in a separate repository and triggers deployment independently. Adding a second application means adding a second task definition, target group, and listener rule — not rebuilding the platform. RDS and ElastiCache are available to any workload in the app subnets. The architecture is a foundation, not a one-off.
+The infrastructure is deliberately decoupled from the application it hosts. The ECS cluster, ALB, data tier, and IAM trust scaffolding are general-purpose — any containerized workload can slot in by pushing an image to ECR and updating the task definition. A static Astro site, a Node.js API, a Python Flask service, or a scheduled batch job would all deploy through the same primitives with different Dockerfiles. Workloads live in their own repos and authenticate into platform resources via OIDC, scoped per-workload by the IAM role's trust policy — see [ice-cream-book](https://github.com/PitziLabs/ice-cream-book) for the first concrete workload. Adding a second application means adding a second task definition, target group, and listener rule — not rebuilding the platform. RDS and ElastiCache are available to any workload in the app subnets. The architecture is a foundation, not a one-off.
 
 ### Daily Destroy/Apply Pattern
 
@@ -155,7 +155,7 @@ With all resources running 24/7, the environment costs approximately $130-140/mo
 
 ## Related Repositories
 
-- [**ice-cream-book**](https://github.com/PitziLabs/ice-cream-book) — Content source for the Astro/Nginx application. Pushes to main trigger cross-repo dispatch to deploy.
+- [**ice-cream-book**](https://github.com/PitziLabs/ice-cream-book) — The first workload running on this platform. Holds both the recipe content and the Astro/Nginx application; deploys directly into this platform's ECR/ECS/IAM resources via OIDC.
 - [**PitziLabs**](https://github.com/PitziLabs) — GitHub organization housing this and related projects.
 
 ## License
