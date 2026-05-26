@@ -62,8 +62,8 @@ module "iam" {
   kms_key_arn               = module.kms.key_arn
   db_credentials_secret_arn = module.secrets.db_credentials_secret_arn
   github_org                = "PitziLabs"
-  github_repo               = "foundry-platform-demo"
-  app_github_repo           = "ice-cream-book"
+  github_repo               = "foundry-platform-demo" # Terraform pipeline role's OIDC trust
+  app_github_repo           = "ice-cream-book"        # App deploy role's OIDC trust (post-#55 split)
 
   # Phase 4: grant ECS roles access to RDS-managed secrets
   rds_managed_secret_access = true
