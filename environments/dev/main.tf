@@ -63,6 +63,7 @@ module "iam" {
   db_credentials_secret_arn = module.secrets.db_credentials_secret_arn
   github_org                = "PitziLabs"
   github_repo               = "foundry-platform-demo"
+  app_github_repo           = "ice-cream-book"
 
   # Phase 4: grant ECS roles access to RDS-managed secrets
   rds_managed_secret_access = true

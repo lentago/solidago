@@ -46,6 +46,11 @@ variable "github_org" {
 }
 
 variable "github_repo" {
-  description = "GitHub repository name (without org prefix)"
+  description = "GitHub repository name (without org prefix). Used by the Terraform pipeline role's OIDC trust."
+  type        = string
+}
+
+variable "app_github_repo" {
+  description = "GitHub repository name whose workflows can assume the app deploy role. Separated from github_repo so the application can live in a different repo than the platform's Terraform code."
   type        = string
 }
