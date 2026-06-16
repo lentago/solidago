@@ -5,6 +5,11 @@ output "alb_arn" {
   value       = aws_lb.main.arn
 }
 
+output "https_listener_arn" {
+  description = "ARN of the HTTPS (443) listener. Additional sites attach host-header listener rules to this listener to share the ALB."
+  value       = aws_lb_listener.https.arn
+}
+
 output "alb_dns_name" {
   description = "DNS name of the ALB (used for Route 53 alias record)"
   value       = aws_lb.main.dns_name

@@ -54,3 +54,9 @@ variable "app_github_repo" {
   description = "GitHub repository name whose workflows can assume the app deploy role. Separated from github_repo so the application can live in a different repo than the platform's Terraform code."
   type        = string
 }
+
+variable "additional_app_github_repos" {
+  description = "Extra workload repos (besides app_github_repo) whose workflows may assume the app deploy role. Each platform-hosted site lives in its own repo and deploys via the same OIDC role; the role's ECR/ECS permissions are already account-scoped, so onboarding a new site is just adding it to this trust list."
+  type        = list(string)
+  default     = []
+}

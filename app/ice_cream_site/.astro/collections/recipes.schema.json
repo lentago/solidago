@@ -1,0 +1,77 @@
+{
+  "$ref": "#/definitions/recipes",
+  "definitions": {
+    "recipes": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string"
+        },
+        "tierOrder": {
+          "type": "number"
+        },
+        "tierColor": {
+          "type": "string"
+        },
+        "difficultyText": {
+          "type": "string"
+        },
+        "totalTime": {
+          "type": "string"
+        },
+        "recipeSlug": {
+          "type": "string"
+        },
+        "recipeNumber": {
+          "type": "number"
+        },
+        "illustration": {
+          "type": "string"
+        },
+        "cuisine": {
+          "type": "string"
+        },
+        "activeTimeMinutes": {
+          "type": "number"
+        },
+        "totalTimeMinutesMin": {
+          "type": "number"
+        },
+        "totalTimeMinutesMax": {
+          "type": "number"
+        },
+        "recipeYield": {
+          "type": "string"
+        },
+        "dietary": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "$schema": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "subtitle",
+        "tier",
+        "tierOrder",
+        "tierColor",
+        "difficultyText",
+        "totalTime",
+        "recipeSlug",
+        "recipeNumber"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}
