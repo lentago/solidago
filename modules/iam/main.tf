@@ -224,11 +224,16 @@ data "aws_iam_policy_document" "github_actions_assume" {
 
     # This condition is CRITICAL for security. Without it, any GitHub
     # repo in the world could assume this role. The "sub" claim in
-    # GitHub's JWT contains the repo and ref info.
+    # GitHub's JWT contains the repo and ref info. Each platform-hosted
+    # workload repo (the app + any additional sites) is listed explicitly;
+    # nothing else can assume the role.
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_org}/${var.app_github_repo}:*"]
+      values = [
+        for repo in concat([var.app_github_repo], var.additional_app_github_repos) :
+        "repo:${var.github_org}/${repo}:*"
+      ]
     }
 
     # Audience check — the JWT must be intended for AWS STS
