@@ -66,10 +66,12 @@ module "iam" {
   app_github_repo           = "ice-cream-book"        # App deploy role's OIDC trust (post-#55 split)
 
   # Additional workload repos that deploy onto this platform via the same app
-  # OIDC role. The Pitzi Labs landing site (pitzilabs-dev) rides on the shared
-  # ALB — see module.site_pitzilabs below. The role's ECR/ECS permissions are
-  # already account-scoped, so this trust entry is all that's needed.
-  additional_app_github_repos = ["pitzilabs-dev"]
+  # OIDC role. The Pitzi Labs landing site (pitzilabs-dev) and the Lentago Labs
+  # landing site (lentagolabs-dev) ride on the shared ALB — see
+  # module.site_pitzilabs / module.site_lentago below. The role's ECR/ECS
+  # permissions are already account-scoped, so this trust entry is all that's
+  # needed.
+  additional_app_github_repos = ["pitzilabs-dev", "lentagolabs-dev"]
 
   # Phase 4: grant ECS roles access to RDS-managed secrets
   rds_managed_secret_access = true
@@ -165,6 +167,43 @@ module "site_pitzilabs" {
 
   hostname               = var.pitzilabs_preview_host
   listener_rule_priority = 100
+
+  vpc_id            = module.vpc.vpc_id
+  app_subnet_ids    = module.vpc.app_subnet_ids
+  security_group_id = module.security_groups.app_security_group_id
+  ecs_cluster_id    = module.ecs.cluster_id
+
+  https_listener_arn = module.alb.https_listener_arn
+  alb_dns_name       = module.alb.alb_dns_name
+  alb_zone_id        = module.alb.alb_zone_id
+  route53_zone_id    = module.dns.zone_id
+
+  task_execution_role_arn = module.iam.ecs_task_execution_role_arn
+  task_role_arn           = module.iam.ecs_task_role_arn
+
+  # Low-traffic preview: one task is plenty.
+  desired_count = 1
+}
+
+# --- Additional site: Lentago Labs landing (lentagolabs-dev) ---
+# The Tidewater (teal+copper+limestone) rebrand of pitzilabs-dev — same
+# nginx-on-Fargate static-site shape. Rides on the SHARED ALB + ECS cluster
+# behind its own hidden, unguessable subdomain of icecreamtofightwith.com
+# (covered by the existing wildcard cert — no new cert). Reuses the app
+# security group (already allows ALB->app:8080) and the ECS task roles. A
+# host-header listener rule (priority 110, unique vs pitzilabs's 100) routes
+# only this hostname here; everything else still hits the primary app's default
+# action.
+module "site_lentago" {
+  source = "../../modules/site"
+
+  project     = var.project
+  environment = var.environment
+  name        = "lentago"
+  aws_region  = var.aws_region
+
+  hostname               = var.lentago_preview_host
+  listener_rule_priority = 110
 
   vpc_id            = module.vpc.vpc_id
   app_subnet_ids    = module.vpc.app_subnet_ids

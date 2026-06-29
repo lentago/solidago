@@ -27,3 +27,15 @@ variable "pitzilabs_preview_host" {
   EOT
   type        = string
 }
+
+variable "lentago_preview_host" {
+  description = <<-EOT
+    Hidden, unguessable subdomain of icecreamtofightwith.com that the Lentago
+    Labs landing site previews on before promotion. NOT committed to source —
+    supplied by the terraform workflow from the repo Actions variable
+    LENTAGO_PREVIEW_HOST (TF_VAR_lentago_preview_host), so it stays out of git
+    history and can be rotated without a code change. Must be a single-label
+    subdomain so the wildcard cert *.icecreamtofightwith.com covers it.
+  EOT
+  type        = string
+}
