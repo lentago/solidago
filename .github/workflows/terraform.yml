@@ -36,6 +36,7 @@ jobs:
     # variable (not committed to source). Required by var.pitzilabs_preview_host.
     env:
       TF_VAR_pitzilabs_preview_host: ${{ vars.PITZILABS_PREVIEW_HOST }}
+      TF_VAR_lentago_preview_host: ${{ vars.LENTAGO_PREVIEW_HOST }}
     defaults:
       run:
         working-directory: environments/dev
@@ -103,6 +104,7 @@ jobs:
     # variable (not committed to source). Required by var.pitzilabs_preview_host.
     env:
       TF_VAR_pitzilabs_preview_host: ${{ vars.PITZILABS_PREVIEW_HOST }}
+      TF_VAR_lentago_preview_host: ${{ vars.LENTAGO_PREVIEW_HOST }}
     defaults:
       run:
         working-directory: environments/dev
