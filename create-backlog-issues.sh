@@ -186,4 +186,4 @@ The Phase 2 Secrets Manager secret (\`foundry-dev/db-credentials\`) is a placeho
 Low — no functional impact, minimal cost."
 
 echo ""
-echo "All issues created! Check https://github.com/PitziLabs/foundry-platform-demo/issues"
+echo "All issues created! Check https://github.com/lentago/foundry-platform-demo/issues"
