@@ -51,7 +51,7 @@ All Terraform commands run from `environments/dev/` (the only environment entry 
 | Terraform version | >= 1.0 |
 | AWS provider | ~> 5.0 (locked at 5.100.0) |
 | AWS region | us-east-1 |
-| AWS profile | foundry |
+| AWS profile | `default` — provider uses the default credential chain; no `foundry` profile exists |
 | Domain | icecreamtofightwith.com |
 | GitHub org/repo | lentago/foundry-platform-demo |
 | State bucket | foundry-tfstate-`<ACCOUNT_ID>` |
