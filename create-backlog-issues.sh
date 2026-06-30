@@ -2,7 +2,7 @@
 # Run this from your terminal to create all backlog issues
 
 # 1. Resource naming standardization (from Phase 4b)
-gh issue create --repo PitziLabs/foundry-platform-demo \
+gh issue create --repo lentago/foundry-platform-demo \
   --title "Standardize Terraform resource naming convention (this vs main)" \
   --body "## Context
 During Phase 4b (S3 module), we noticed inconsistent internal Terraform resource naming across modules:
@@ -22,7 +22,7 @@ Pick one convention and apply it across all modules.
 Low — cleanup task, no functional impact."
 
 # 2. DynamoDB lock table deprecation (shows every plan/apply)
-gh issue create --repo PitziLabs/foundry-platform-demo \
+gh issue create --repo lentago/foundry-platform-demo \
   --title "Replace deprecated dynamodb_table backend param with use_lockfile" \
   --body "## Context
 Every \`terraform plan\` and \`apply\` shows:
@@ -40,7 +40,7 @@ The parameter \"dynamodb_table\" is deprecated. Use parameter \"use_lockfile\" i
 Medium — warning on every operation, will eventually become an error."
 
 # 3. Selective destroy strategy (discussed in Phase 2 and Phase 3)
-gh issue create --repo PitziLabs/foundry-platform-demo \
+gh issue create --repo lentago/foundry-platform-demo \
   --title "Implement selective teardown/standup scripts for cost management" \
   --body "## Context
 Full \`terraform destroy\` saves ~\$4.50/day in idle costs but causes 15-20 minute resurrection pain due to:
@@ -76,7 +76,7 @@ Create \`scripts/teardown.sh\` and \`scripts/standup.sh\` that selectively manag
 Medium — saves money and time on every session."
 
 # 4. State bucket encryption upgrade (Decision #2 from Phase 0)
-gh issue create --repo PitziLabs/foundry-platform-demo \
+gh issue create --repo lentago/foundry-platform-demo \
   --title "Upgrade state bucket encryption from AES256 to KMS CMK" \
   --body "## Context
 Decision #2 from Phase 0: the Terraform state bucket uses default AES256 encryption to avoid a KMS dependency before Phase 2. Now that the KMS key exists, the bucket should be upgraded to use the CMK for consistency.
@@ -94,7 +94,7 @@ Update the state bucket server-side encryption configuration to use the KMS CMK 
 Low — AES256 is still encrypted, just not with our managed key."
 
 # 5. VPC subnet refactor: count → for_each (Decision #4 from Phase 0)
-gh issue create --repo PitziLabs/foundry-platform-demo \
+gh issue create --repo lentago/foundry-platform-demo \
   --title "Refactor VPC subnets from count to for_each" \
   --body "## Context
 Decision #4 from Phase 0: VPC subnets use \`count\` for simplicity. \`for_each\` provides better state handling — removing a subnet from the middle of a list with \`count\` causes all subsequent subnets to be destroyed and recreated with new indices.
@@ -111,7 +111,7 @@ Refactor \`modules/vpc/main.tf\` subnet resources from \`count\` to \`for_each\`
 Low — no functional impact unless AZs are added/removed."
 
 # 6. GitHub Actions Node.js 20 deprecation
-gh issue create --repo PitziLabs/foundry-platform-demo \
+gh issue create --repo lentago/foundry-platform-demo \
   --title "Upgrade GitHub Actions to Node.js 24-compatible versions" \
   --body "## Context
 GitHub is deprecating Node.js 20 in Actions runners. Current workflow uses:
@@ -133,7 +133,7 @@ Monitor for v5 releases of these actions and update \`.github/workflows/deploy.y
 Medium — has a deadline (June 2026)."
 
 # 7. Local Docker Engine setup on ChromeOS
-gh issue create --repo PitziLabs/foundry-platform-demo \
+gh issue create --repo lentago/foundry-platform-demo \
   --title "Set up local Docker Engine on ChromeOS for local container builds" \
   --body "## Context
 Currently relying entirely on CI/CD for container builds because the Docker Engine isn't installed in the ChromeOS Crostini environment. Only the Docker CLI is present. CPU supports nested virtualization (\`vmx\` flags present).
@@ -151,7 +151,7 @@ Install Docker Engine in Crostini, or set up Podman as a daemon-less alternative
 Low — CI/CD path works, this is a convenience improvement."
 
 # 8. Multi-domain architecture
-gh issue create --repo PitziLabs/foundry-platform-demo \
+gh issue create --repo lentago/foundry-platform-demo \
   --title "Design multi-domain architecture for portfolio sites" \
   --body "## Context
 Multiple domains planned for the platform:
@@ -172,7 +172,7 @@ Currently the infrastructure serves a single site. Need to design for multiple s
 Medium — architectural decision needed before Phase 7 hardening."
 
 # 9. RDS-managed password migration to traditional (potential Phase 7)
-gh issue create --repo PitziLabs/foundry-platform-demo \
+gh issue create --repo lentago/foundry-platform-demo \
   --title "Document: Phase 2 Secrets Manager secret unused after RDS-managed password choice" \
   --body "## Context
 The Phase 2 Secrets Manager secret (\`foundry-dev/db-credentials\`) is a placeholder that was originally intended for RDS credentials. We chose RDS-managed passwords instead (Decision #19), so this secret is now orphaned.
