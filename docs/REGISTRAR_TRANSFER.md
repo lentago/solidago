@@ -1,6 +1,6 @@
 # Registrar transfer: Squarespace → Route 53 Domains
 
-Why: see [issue #48](https://github.com/PitziLabs/foundry-platform-demo/issues/48). Today's
+Why: see [issue #48](https://github.com/lentago/foundry-platform-demo/issues/48). Today's
 `terraform apply` blocks at ACM certificate validation until the operator
 manually updates nameservers at Squarespace. The `prevent_destroy` lifecycle
 on the hosted zone (this PR) stops the problem recurring on every

@@ -1,6 +1,6 @@
 # How Workloads Relate to This Platform
 
-This document describes how a workload (an application that runs on this platform) integrates with the infrastructure managed in this repo. The first concrete example is [`PitziLabs/ice-cream-book`](https://github.com/PitziLabs/ice-cream-book), which holds both the Astro/Nginx source for **icecreamtofightwith.com** and the deploy workflow that ships it.
+This document describes how a workload (an application that runs on this platform) integrates with the infrastructure managed in this repo. The first concrete example is [`lentago/ice-cream-book`](https://github.com/lentago/ice-cream-book), which holds both the Astro/Nginx source for **icecreamtofightwith.com** and the deploy workflow that ships it.
 
 Before the platform/workload split (issue #55), the application source lived under `app/` in this repo and a cross-repo `repository_dispatch` triggered the deploy from a content-source repo. That coupling is gone — this repo now provides infrastructure only.
 
@@ -21,8 +21,8 @@ The platform does **not** know what the workload is. It exposes primitives; the 
 
 There are two GitHub Actions IAM roles in `modules/iam`:
 
-- **`foundry-dev-github-actions`** — assumed by workload repos to deploy. Trust policy: `repo:PitziLabs/${var.app_github_repo}:*`. Currently set to `ice-cream-book`.
-- **`foundry-dev-github-actions-terraform`** — assumed by this repo's `terraform` GitHub environment. Trust policy: `repo:PitziLabs/${var.github_repo}:environment:terraform`. Plans and applies infrastructure.
+- **`foundry-dev-github-actions`** — assumed by workload repos to deploy. Trust policy: `repo:lentago/${var.app_github_repo}:*`. Currently set to `ice-cream-book`.
+- **`foundry-dev-github-actions-terraform`** — assumed by this repo's `terraform` GitHub environment. Trust policy: `repo:lentago/${var.github_repo}:environment:terraform`. Plans and applies infrastructure.
 
 Neither role can do the other's job. A compromised workload deploy can't mutate infrastructure; a compromised infrastructure pipeline can't push arbitrary container images without going through Terraform.
 

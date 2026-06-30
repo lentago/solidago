@@ -40,7 +40,7 @@ terraform output
 
 ```
 
-Container image builds happen in the workload repo's deploy workflow (see [ice-cream-book](https://github.com/PitziLabs/ice-cream-book)/.github/workflows/deploy.yml), not from this repo. This repo manages the ECR registry, ECS cluster/service, and IAM trust — not the image itself.
+Container image builds happen in the workload repo's deploy workflow (see [ice-cream-book](https://github.com/lentago/ice-cream-book)/.github/workflows/deploy.yml), not from this repo. This repo manages the ECR registry, ECS cluster/service, and IAM trust — not the image itself.
 
 All Terraform commands run from `environments/dev/` (the only environment entry point currently).
 
@@ -53,7 +53,7 @@ All Terraform commands run from `environments/dev/` (the only environment entry 
 | AWS region | us-east-1 |
 | AWS profile | foundry |
 | Domain | icecreamtofightwith.com |
-| GitHub org/repo | PitziLabs/foundry-platform-demo |
+| GitHub org/repo | lentago/foundry-platform-demo |
 | State bucket | foundry-tfstate-`<ACCOUNT_ID>` |
 | Lock table | foundry-tfstate-lock |
 | AZs | us-east-1a, us-east-1b |

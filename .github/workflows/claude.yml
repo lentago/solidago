@@ -1,7 +1,7 @@
 # ============================================================================
 # Claude Code — Interactive @claude Responder
 # ============================================================================
-# Thin wrapper around PitziLabs/shared-workflows/claude-responder.yml.
+# Thin wrapper around lentago/shared-workflows/claude-responder.yml.
 # Defaults to opus since Terraform changes benefit from heavier analysis;
 # `model:sonnet` / `model:haiku` labels demote when the change is small.
 # ============================================================================
@@ -28,7 +28,7 @@ jobs:
       issues: write
       id-token: write
       actions: read
-    uses: PitziLabs/shared-workflows/.github/workflows/claude-responder.yml@main
+    uses: lentago/shared-workflows/.github/workflows/claude-responder.yml@main
     secrets: inherit
     with:
       default_model: opus

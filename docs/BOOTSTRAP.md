@@ -91,7 +91,7 @@ aws dynamodb create-table \
 ## Step 3: Clone the Repository
 
 ```bash
-git clone https://github.com/PitziLabs/foundry-platform-demo.git
+git clone https://github.com/lentago/foundry-platform-demo.git
 cd foundry-platform-demo
 ```
 

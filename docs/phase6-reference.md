@@ -1,6 +1,6 @@
 # Phase 6: CI/CD Pipeline — Reference Notes
 
-> **Historical reference.** This document describes the pre-#55 architecture where the Astro application and its deploy workflow lived in `foundry-platform-demo/app/` and ran from this repo. After the platform/workload split (issue #55, completed 2026-05-25), the application source and deploy workflow live in [`PitziLabs/ice-cream-book`](https://github.com/PitziLabs/ice-cream-book). The OIDC role and ECR/ECS resources described here still exist and are still the right names — the workflow that uses them just moved repos.
+> **Historical reference.** This document describes the pre-#55 architecture where the Astro application and its deploy workflow lived in `foundry-platform-demo/app/` and ran from this repo. After the platform/workload split (issue #55, completed 2026-05-25), the application source and deploy workflow live in [`lentago/ice-cream-book`](https://github.com/lentago/ice-cream-book). The OIDC role and ECR/ECS resources described here still exist and are still the right names — the workflow that uses them just moved repos.
 >
 > For the current architecture, see [`WORKLOAD_RELATIONSHIP.md`](WORKLOAD_RELATIONSHIP.md) in this repo and `.github/workflows/deploy.yml` in `ice-cream-book`.
 >
@@ -27,7 +27,7 @@ GitHub Actions triggers
         ▼
 ┌─────────────────────────────────┐
 │  Clone cookbook recipes          │
-│  (PitziLabs/ice-cream-book)     │
+│  (lentago/ice-cream-book)     │
 └──────────┬──────────────────────┘
            │
            ▼
@@ -88,8 +88,8 @@ GitHub Actions triggers
 | ECS Service | `foundry-dev-app` |
 | AWS Region | `us-east-1` |
 | Live site | `https://icecreamtofightwith.com` |
-| Content source repo | `PitziLabs/ice-cream-book` |
-| Infra repo | `PitziLabs/foundry-platform-demo` |
+| Content source repo | `lentago/ice-cream-book` |
+| Infra repo | `lentago/foundry-platform-demo` |
 
 ## How It Works — The Short Version
 
@@ -109,10 +109,10 @@ There IS a multi-stage Dockerfile at `app/ice_cream_site/Dockerfile` that does a
 ## OIDC Authentication — How It Actually Works
 
 1. GitHub Actions runner requests a JWT from `token.actions.githubusercontent.com`
-2. The JWT includes claims: repo (`PitziLabs/foundry-platform-demo`), branch, workflow, actor
+2. The JWT includes claims: repo (`lentago/foundry-platform-demo`), branch, workflow, actor
 3. `aws-actions/configure-aws-credentials@v4` sends the JWT to AWS STS
 4. AWS validates the JWT against our OIDC provider (created in Phase 2)
-5. AWS checks the trust policy: `repo:PitziLabs/foundry-platform-demo:*`
+5. AWS checks the trust policy: `repo:lentago/foundry-platform-demo:*`
 6. STS issues temporary credentials scoped to the `foundry-dev-github-actions` role
 7. Credentials expire when the workflow ends
 

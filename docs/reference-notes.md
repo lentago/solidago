@@ -13,7 +13,7 @@
 | Root email | _TBD_ | MFA enabled: ✅ |
 | IAM admin username | cpitzi-iac | MFA enabled: ✅ |
 | AWS CLI profile name | foundry | |
-| GitHub repo | foundry-platform-demo | https://github.com/PitziLabs/foundry-platform-demo |
+| GitHub repo | foundry-platform-demo | https://github.com/lentago/foundry-platform-demo |
 | GitHub username | cpitzi | |
 | Domain name | _TBD_ | Cheap domain, Phase 3 |
 | Local OS | ChromeOS w/ Linux dev env (Debian-based) | |
@@ -91,7 +91,7 @@
 | Route 53 hosted zone ID | Captured from `terraform output route53_zone_id` after first apply. Locked by `prevent_destroy`. |
 | Route 53 nameservers | Captured from `terraform output route53_name_servers` after first apply. Authoritative — `prevent_destroy` on the zone keeps these stable across teardown cycles. |
 | Domain name | icecreamtofightwith.com |
-| Domain registrar | Squarespace (nameservers delegated to Route 53). Transfer to Route 53 Domains planned — see [issue #48](https://github.com/PitziLabs/foundry-platform-demo/issues/48) and `docs/REGISTRAR_TRANSFER.md`. |
+| Domain registrar | Squarespace (nameservers delegated to Route 53). Transfer to Route 53 Domains planned — see [issue #48](https://github.com/lentago/foundry-platform-demo/issues/48) and `docs/REGISTRAR_TRANSFER.md`. |
 | CloudWatch log group | /ecs/foundry-dev-app |
 | ECS auto-scaling | Not yet configured (Phase 3d) |
 
@@ -168,7 +168,7 @@ _Quick-reference for architectural decisions made along the way. Full ADRs live 
 | 4 | count over for_each for VPC subnets | Simpler to learn; fine for lab. Can refactor to for_each later for better state handling. | 2026-02-27 |
 | 5 | Single KMS CMK for all encryption | $1/mo per key; lab doesn't need per-service key isolation. Key policy grants scoped to specific roles. | 2026-02-28 |
 | 6 | Separate ECS task execution vs task role | Execution role = ECS control plane (image pull, logs, secrets injection). Task role = application runtime AWS access. Least-privilege separation. | 2026-02-28 |
-| 7 | GitHub OIDC over IAM access keys | No long-lived credentials. Trust scoped to repo:PitziLabs/foundry-platform-demo:*. | 2026-02-28 |
+| 7 | GitHub OIDC over IAM access keys | No long-lived credentials. Trust scoped to repo:lentago/foundry-platform-demo:*. | 2026-02-28 |
 | 8 | Security groups as standalone module | Separation of concerns: VPC = network plumbing, SGs = access policy. Cleaner output wiring to consuming modules in Phases 3-4. | 2026-02-28 |
 | 9 | Newer per-rule SG resources over legacy inline/aws_security_group_rule | aws_vpc_security_group_ingress_rule is the recommended path forward; older resources in maintenance mode. | 2026-02-28 |
 | 10 | Hybrid module structure for Phase 2 (kms/, secrets/, iam/, security-groups/) | KMS + Secrets Manager tightly coupled but separate from IAM roles and security groups. Each module has a clear contract and output surface. | 2026-02-28 |

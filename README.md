@@ -28,7 +28,7 @@ A three-tier web application running on AWS, fully managed by Terraform:
 
 **CI/CD:** This repo runs one Terraform pipeline; workload deploys run from their own repos.
 - **Terraform** — plans on PR (with plan output posted as a PR comment), applies on merge to main. IAM role scoped to the `terraform` GitHub environment via OIDC sub-claim, so only this workflow can mutate infrastructure.
-- **Workload deploys** — each workload (currently [ice-cream-book](https://github.com/PitziLabs/ice-cream-book)) builds and deploys from its own repository, assuming the platform-owned `foundry-dev-github-actions` IAM role via OIDC. The role's trust policy is scoped to the workload repo, so only that repo's workflows can push to ECR and update ECS.
+- **Workload deploys** — each workload (currently [ice-cream-book](https://github.com/lentago/ice-cream-book)) builds and deploys from its own repository, assuming the platform-owned `foundry-dev-github-actions` IAM role via OIDC. The role's trust policy is scoped to the workload repo, so only that repo's workflows can push to ECR and update ECS.
 
 ## Architecture
 
@@ -109,7 +109,7 @@ foundry-platform-demo/
     └── BOOTSTRAP.md             # Deployment runbook (start here)
 ```
 
-Workload code (the Astro application, its Dockerfile, and its deploy workflow) lives in [ice-cream-book](https://github.com/PitziLabs/ice-cream-book), not in this repo.
+Workload code (the Astro application, its Dockerfile, and its deploy workflow) lives in [ice-cream-book](https://github.com/lentago/ice-cream-book), not in this repo.
 
 ## Design Decisions
 
@@ -139,7 +139,7 @@ For a portfolio project demonstrating AWS skills, native CloudWatch is the right
 
 ### Platform, Not a Single-App Deployment
 
-The infrastructure is deliberately decoupled from the application it hosts. The ECS cluster, ALB, data tier, and IAM trust scaffolding are general-purpose — any containerized workload can slot in by pushing an image to ECR and updating the task definition. A static Astro site, a Node.js API, a Python Flask service, or a scheduled batch job would all deploy through the same primitives with different Dockerfiles. Workloads live in their own repos and authenticate into platform resources via OIDC, scoped per-workload by the IAM role's trust policy — see [ice-cream-book](https://github.com/PitziLabs/ice-cream-book) for the first concrete workload. Adding a second application means adding a second task definition, target group, and listener rule — not rebuilding the platform. RDS and ElastiCache are available to any workload in the app subnets. The architecture is a foundation, not a one-off.
+The infrastructure is deliberately decoupled from the application it hosts. The ECS cluster, ALB, data tier, and IAM trust scaffolding are general-purpose — any containerized workload can slot in by pushing an image to ECR and updating the task definition. A static Astro site, a Node.js API, a Python Flask service, or a scheduled batch job would all deploy through the same primitives with different Dockerfiles. Workloads live in their own repos and authenticate into platform resources via OIDC, scoped per-workload by the IAM role's trust policy — see [ice-cream-book](https://github.com/lentago/ice-cream-book) for the first concrete workload. Adding a second application means adding a second task definition, target group, and listener rule — not rebuilding the platform. RDS and ElastiCache are available to any workload in the app subnets. The architecture is a foundation, not a one-off.
 
 ### Daily Destroy/Apply Pattern
 
@@ -155,8 +155,8 @@ With all resources running 24/7, the environment costs approximately $130-140/mo
 
 ## Related Repositories
 
-- [**ice-cream-book**](https://github.com/PitziLabs/ice-cream-book) — The first workload running on this platform. Holds both the recipe content and the Astro/Nginx application; deploys directly into this platform's ECR/ECS/IAM resources via OIDC.
-- [**PitziLabs**](https://github.com/PitziLabs) — GitHub organization housing this and related projects.
+- [**ice-cream-book**](https://github.com/lentago/ice-cream-book) — The first workload running on this platform. Holds both the recipe content and the Astro/Nginx application; deploys directly into this platform's ECR/ECS/IAM resources via OIDC.
+- [**lentago**](https://github.com/lentago) — GitHub organization housing this and related projects.
 
 ## License
 
