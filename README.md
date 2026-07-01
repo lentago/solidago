@@ -106,7 +106,8 @@ foundry-platform-demo/
 │   └── workflows/
 │       └── terraform.yml        # Terraform plan/apply pipeline
 └── docs/
-    └── BOOTSTRAP.md             # Deployment runbook (start here)
+    ├── BOOTSTRAP.md             # Deployment runbook (start here)
+    └── RUNBOOK.md               # Selective teardown / standup for cost saving
 ```
 
 Workload code (the Astro application, its Dockerfile, and its deploy workflow) lives in [ice-cream-book](https://github.com/lentago/ice-cream-book), not in this repo.
@@ -143,7 +144,7 @@ The infrastructure is deliberately decoupled from the application it hosts. The 
 
 ### Daily Destroy/Apply Pattern
 
-This runs on personal money. The bootstrap runbook documents the tear-down and rebuild process. Terraform state persists in S3, so `terraform destroy` followed by `terraform apply` restores the full environment.
+This runs on personal money. Terraform state persists in S3, so `terraform destroy` followed by `terraform apply` restores the full environment. For day-to-day cost saving there is a **selective** teardown that drops only the expensive always-on resources (NAT gateways, ALB, Fargate tasks, RDS, ElastiCache) while keeping the durable foundation (state backend, IAM/OIDC, ECR images, Route 53 zone + ACM cert, KMS, secrets) — so a rebuild takes minutes, not the ~75-minute ACM-revalidation pain of a from-scratch rebuild. See [`scripts/teardown.sh`](scripts/teardown.sh), [`scripts/standup.sh`](scripts/standup.sh), and the [teardown/standup runbook](docs/RUNBOOK.md).
 
 ## Getting Started
 
