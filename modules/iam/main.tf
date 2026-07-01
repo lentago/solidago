@@ -52,7 +52,7 @@ data "aws_iam_policy_document" "ecs_task_execution_custom" {
   # The wildcard at the end covers secret version IDs, which Secrets
   # Manager appends (e.g., secret-arn:version-id:version-stage).
   statement {
-    sid    = "SecretsManagerRead"
+    sid = "SecretsManagerRead"
     actions = [
       "secretsmanager:GetSecretValue",
     ]
@@ -199,8 +199,8 @@ resource "aws_iam_role_policy_attachment" "ecs_task_custom" {
 # regardless of how many repos or roles use it. It tells AWS "I trust
 # tokens issued by token.actions.githubusercontent.com."
 resource "aws_iam_openid_connect_provider" "github" {
-  url             = "https://token.actions.githubusercontent.com"
-  client_id_list  = ["sts.amazonaws.com"]
+  url            = "https://token.actions.githubusercontent.com"
+  client_id_list = ["sts.amazonaws.com"]
 
   # Thumbprint for GitHub's OIDC provider. AWS requires this but as of
   # 2023, AWS actually ignores it for OIDC providers that use a trusted
@@ -277,7 +277,7 @@ data "aws_iam_policy_document" "github_actions" {
       "ecs:DescribeTasks",
       "ecs:ListTasks",
     ]
-    resources = ["*"]  # ECS doesn't support resource-level permissions well
+    resources = ["*"] # ECS doesn't support resource-level permissions well
   }
 
   # ECR permissions for pushing images
@@ -286,7 +286,7 @@ data "aws_iam_policy_document" "github_actions" {
     actions = [
       "ecr:GetAuthorizationToken",
     ]
-    resources = ["*"]  # GetAuthorizationToken doesn't support resource scoping
+    resources = ["*"] # GetAuthorizationToken doesn't support resource scoping
   }
 
   statement {
@@ -309,8 +309,8 @@ data "aws_iam_policy_document" "github_actions" {
   # for the task." Without PassRole, the deploy would fail with an
   # authorization error when registering the new task definition.
   statement {
-    sid       = "IAMPassRole"
-    actions   = ["iam:PassRole"]
+    sid     = "IAMPassRole"
+    actions = ["iam:PassRole"]
     resources = [
       aws_iam_role.ecs_task_execution.arn,
       aws_iam_role.ecs_task.arn,
@@ -330,6 +330,23 @@ data "aws_iam_policy_document" "github_actions" {
       "arn:aws:s3:::foundry-tfstate-${var.aws_account_id}",
       "arn:aws:s3:::foundry-tfstate-${var.aws_account_id}/*",
     ]
+  }
+
+  # The state bucket is encrypted with a dedicated, bootstrap-managed CMK
+  # (alias/foundry-tfstate). Reading state requires kms:Decrypt; writing it
+  # requires kms:GenerateDataKey (S3 SSE-KMS derives a per-object data key).
+  # Scoped to that key only — this role gets no access to the platform's
+  # main encryption key. The Terraform pipeline role already holds kms:* and
+  # so is covered without a separate statement.
+  statement {
+    sid = "TerraformStateKMS"
+    actions = [
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:GenerateDataKey",
+      "kms:DescribeKey",
+    ]
+    resources = [var.tfstate_kms_key_arn]
   }
 
 }

@@ -26,6 +26,7 @@
 |------|-------|
 | State bucket name | foundry-tfstate-`<ACCOUNT_ID>` |
 | State bucket region | us-east-1 |
+| State bucket encryption | SSE-KMS via dedicated bootstrap-managed CMK `alias/foundry-tfstate` (separate from the Terraform-managed `alias/foundry-dev-main`) |
 | State locking | S3-native (`use_lockfile = true`, Terraform 1.10+) |
 | State file key | env/dev/terraform.tfstate |
 
@@ -163,7 +164,7 @@ _Quick-reference for architectural decisions made along the way. Full ADRs live 
 | # | Decision | Rationale | Date |
 |---|----------|-----------|------|
 | 1 | AdministratorAccess on cpitzi-iac | Lab/sandbox account, sole user. Scoped permissions would create constant friction. Will scope down for CI/CD roles. | 2026-02-27 |
-| 2 | AES256 encryption on state bucket (not KMS yet) | Avoids KMS dependency before Phase 2. Will upgrade to CMK later. | 2026-02-27 |
+| 2 | AES256 encryption on state bucket (not KMS yet) | Avoids KMS dependency before Phase 2. Will upgrade to CMK later. **Superseded by #35 (issue #15).** | 2026-02-27 |
 | 3 | 2 NAT Gateways (one per AZ) | Production-correct HA pattern. Accepted ~$65/mo cost over single-NAT savings. | 2026-02-27 |
 | 4 | count over for_each for VPC subnets | Simpler to learn; fine for lab. Can refactor to for_each later for better state handling. | 2026-02-27 |
 | 5 | Single KMS CMK for all encryption | $1/mo per key; lab doesn't need per-service key isolation. Key policy grants scoped to specific roles. | 2026-02-28 |
@@ -196,6 +197,7 @@ _Quick-reference for architectural decisions made along the way. Full ADRs live 
 | 32 | Management events only (no data events) | Data events (S3 object ops, Lambda invocations) would generate massive volume and cost for a lab. Management events cover the resource-level audit questions. | 2026-03-19 |
 | 33 | S3 bucket policy owned by CloudTrail module (not S3 module) | Keeps the S3 module general-purpose. The consumer (CloudTrail) manages its own access. If AWS Config also needs bucket access, we'll consolidate into a shared policy. | 2026-03-19 |
 | 34 | EncryptionContext condition (not aws:SourceArn) on KMS key policy | Avoids circular dependency: trail needs key ARN, and SourceArn condition would need trail ARN. EncryptionContext scoped to account is sufficient for single-account use. | 2026-03-19 |
+| 35 | State bucket uses a DEDICATED bootstrap-managed CMK (`alias/foundry-tfstate`), not the Terraform-managed `alias/foundry-dev-main` | Reusing the Terraform key would be circular (it's defined in the state it would encrypt) and unsafe: `terraform destroy` schedules that key for deletion, which would lock us out of state on the next teardown. The dedicated key is created outside Terraform and never destroyed. IAM (not the key policy) grants the CI roles scoped access, since those roles don't exist at bootstrap time. Closes issue #15. | 2026-07-01 |
 
 ---
 

@@ -55,6 +55,7 @@ All Terraform commands run from `environments/dev/` (the only environment entry 
 | Domain | icecreamtofightwith.com |
 | GitHub org/repo | lentago/foundry-platform-demo |
 | State bucket | foundry-tfstate-`<ACCOUNT_ID>` |
+| State bucket encryption | SSE-KMS via dedicated bootstrap-managed CMK `alias/foundry-tfstate` (NOT the Terraform-managed `alias/foundry-dev-main`) |
 | State locking | S3-native (`use_lockfile = true`) |
 | AZs | us-east-1a, us-east-1b |
 
@@ -114,7 +115,7 @@ PR workflow + auto-merge arming protocol is fleet-wide; see `~/repos/CLAUDE.md`.
 
 - `environments/dev/main.tf` — how all modules connect (the orchestration layer)
 - `environments/dev/outputs.tf` — what each module exposes
-- `environments/dev/backend.tf` — remote state configuration (S3 + DynamoDB)
+- `environments/dev/backend.tf` — remote state configuration (S3 backend, S3-native locking, SSE-KMS via the bootstrap-managed `alias/foundry-tfstate` CMK)
 - `modules/*/variables.tf` — what each module accepts
 - `modules/iam/main.tf` — OIDC roles. `foundry-dev-github-actions` (trusts the workload repo `ice-cream-book` via `var.app_github_repo`) deploys containers and updates ECS; `foundry-dev-github-actions-terraform` (trusts this repo's `terraform` environment) runs the Terraform pipeline. The split keeps platform mutations and workload deploys on separate credentials.
 
