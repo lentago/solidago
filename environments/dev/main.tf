@@ -227,6 +227,12 @@ module "site_lentago" {
   task_execution_role_arn = module.iam.ecs_task_execution_role_arn
   task_role_arn           = module.iam.ecs_task_role_arn
 
+  # Promoted to its own apex domain (lentago.dev) via module.lentago_domain
+  # below, so the hidden preview DNS record is retired. The host-header rule
+  # stays to keep the target group ALB-associated (the ECS service depends on
+  # it; it can't depend on the apex-domain rule without a module cycle).
+  create_dns_record = false
+
   # Low-traffic preview: one task is plenty.
   desired_count = 1
 }
