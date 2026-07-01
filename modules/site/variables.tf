@@ -80,6 +80,12 @@ variable "route53_zone_id" {
   type        = string
 }
 
+variable "create_dns_record" {
+  description = "Whether to create the preview hostname's Route 53 alias record. Set false once the site is promoted to its own apex domain (the hidden preview host is then retired), while the host-header listener rule stays to keep the target group associated with the ALB. Default true preserves the preview for un-promoted sites."
+  type        = bool
+  default     = true
+}
+
 variable "task_execution_role_arn" {
   description = "ECS task execution role ARN (pull image, write logs)"
   type        = string

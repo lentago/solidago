@@ -206,7 +206,14 @@ resource "aws_ecs_service" "this" {
 }
 
 # --- Route 53 alias: hostname -> ALB ---
+# Skipped once the site is promoted to its own apex domain (create_dns_record =
+# false): the hidden preview host stops resolving, but the host-header rule above
+# stays so the target group remains ALB-associated (avoids the issue #50 race on
+# rebuild — the ECS service depends on that rule, and it can't depend on the
+# apex-domain module's rule without a module cycle).
 resource "aws_route53_record" "this" {
+  count = var.create_dns_record ? 1 : 0
+
   zone_id = var.route53_zone_id
   name    = var.hostname
   type    = "A"
@@ -216,4 +223,12 @@ resource "aws_route53_record" "this" {
     zone_id                = var.alb_zone_id
     evaluate_target_health = true
   }
+}
+
+# Adding count above changed this resource's address (this -> this[0]). Tell
+# Terraform it moved rather than destroy+recreate existing preview records
+# (e.g. site_pitzilabs, which keeps its record with create_dns_record = true).
+moved {
+  from = aws_route53_record.this
+  to   = aws_route53_record.this[0]
 }
