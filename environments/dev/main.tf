@@ -32,6 +32,14 @@ module "vpc" {
 }
 data "aws_caller_identity" "current" {}
 
+# Dedicated CMK that encrypts the Terraform state bucket. Created outside
+# Terraform by scripts/bootstrap/bootstrap-backend.sh (see backend.tf), so we
+# look it up by alias rather than manage it here. Its ARN is handed to the IAM
+# module so the GitHub Actions roles can read/write the KMS-encrypted state.
+data "aws_kms_alias" "tfstate" {
+  name = "alias/foundry-tfstate"
+}
+
 module "kms" {
   source = "../../modules/kms"
 
@@ -60,6 +68,7 @@ module "iam" {
   aws_account_id            = data.aws_caller_identity.current.account_id
   aws_region                = var.aws_region
   kms_key_arn               = module.kms.key_arn
+  tfstate_kms_key_arn       = data.aws_kms_alias.tfstate.target_key_arn
   db_credentials_secret_arn = module.secrets.db_credentials_secret_arn
   github_org                = "lentago"
   github_repo               = "foundry-platform-demo" # Terraform pipeline role's OIDC trust

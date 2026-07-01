@@ -49,6 +49,10 @@ Note your **Account ID** from the output. You'll need it throughout this guide. 
 
 Terraform needs a remote backend before it can manage anything. These resources are intentionally created outside of Terraform (chicken-and-egg problem).
 
+The `scripts/bootstrap/bootstrap-backend.sh` script performs all of these steps
+(and is idempotent for the KMS key). The commands below are the equivalent
+manual sequence:
+
 ```bash
 export AWS_PROFILE=foundry
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -62,10 +66,40 @@ aws s3api put-bucket-versioning \
   --bucket "foundry-tfstate-${ACCOUNT_ID}" \
   --versioning-configuration Status=Enabled
 
+# Dedicated CMK for the state bucket (separate from the Terraform-managed
+# key — see the note below). Root-only key policy; IAM policies authorize
+# the CI roles.
+KEY_ID=$(aws kms create-key \
+  --description "foundry Terraform state bucket encryption key" \
+  --tags TagKey=Name,TagValue=foundry-tfstate-key \
+  --policy '{
+    "Version": "2012-10-17",
+    "Id": "foundry-tfstate-key-policy",
+    "Statement": [{
+      "Sid": "EnableRootAccountAccess",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::'"${ACCOUNT_ID}"':root" },
+      "Action": "kms:*",
+      "Resource": "*"
+    }]
+  }' \
+  --query 'KeyMetadata.KeyId' --output text)
+
+aws kms enable-key-rotation --key-id "${KEY_ID}"
+aws kms create-alias --alias-name alias/foundry-tfstate --target-key-id "${KEY_ID}"
+KEY_ARN=$(aws kms describe-key --key-id "${KEY_ID}" --query 'KeyMetadata.Arn' --output text)
+
+# Default the bucket to SSE-KMS using that CMK
 aws s3api put-bucket-encryption \
   --bucket "foundry-tfstate-${ACCOUNT_ID}" \
   --server-side-encryption-configuration '{
-    "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
+    "Rules": [{
+      "ApplyServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "aws:kms",
+        "KMSMasterKeyID": "'"${KEY_ARN}"'"
+      },
+      "BucketKeyEnabled": true
+    }]
   }'
 
 aws s3api put-public-access-block \
@@ -79,6 +113,23 @@ aws s3api put-public-access-block \
 ```
 
 State locking uses S3-native locking (`use_lockfile = true`, Terraform 1.10+). No DynamoDB table is needed.
+
+> **Why a dedicated state CMK (`alias/foundry-tfstate`), not the Terraform-managed `alias/foundry-dev-main`?**
+> The state bucket is bootstrapped *outside* Terraform (chicken-and-egg), so its
+> key can't be a Terraform resource. Reusing the Terraform-managed key would be
+> a circular dependency — that key is *defined in* the state stored in this
+> bucket — and `terraform destroy` schedules it for deletion, which would lock
+> you out of your own state on the next teardown. The dedicated key is never
+> touched by Terraform, so it is always available. Its root-only key policy is
+> the standard KMS escape hatch; the GitHub Actions roles get scoped
+> `kms:Encrypt/Decrypt/GenerateDataKey/DescribeKey` on it via `modules/iam`.
+
+> **Upgrading an existing AES256 backend?** After switching the bucket to
+> SSE-KMS and adding `kms_key_id` to `backend.tf`, run
+> `terraform init -reconfigure` in `environments/dev`. Existing state objects
+> stay readable (their AES256 encryption is intact); only new writes use the
+> CMK. This is a human-run step — the state bucket and its key are
+> bootstrap-managed, not applied by the CI pipeline.
 
 ---
 
@@ -114,6 +165,7 @@ backend "s3" {
   region       = "us-east-1"
   use_lockfile = true
   encrypt      = true
+  kms_key_id   = "arn:aws:kms:us-east-1:YOUR_ACCOUNT_ID:alias/foundry-tfstate"
 }
 ```
 
