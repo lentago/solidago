@@ -231,6 +231,35 @@ module "site_lentago" {
   desired_count = 1
 }
 
+# --- Promote lentagolabs-dev to its public apex domain: lentago.dev ---
+# Brings the registered apex domain lentago.dev online in front of the EXISTING
+# site_lentago backend (target group) on the shared ALB. Its own Route 53 zone +
+# ACM cert (apex + www, attached to the shared HTTPS listener via SNI) + a
+# host-header rule route lentago.dev / www.lentago.dev to that target group.
+# Two-phase apply: `terraform apply
+# -target=module.lentago_domain.aws_route53_zone.this` first, re-delegate the NS
+# at the registrar (Squarespace), then a full apply — otherwise ACM DNS
+# validation hangs until the delegation is live. See the module header.
+module "lentago_domain" {
+  source = "../../modules/apex-domain"
+
+  project     = var.project
+  environment = var.environment
+  name        = "lentago"
+  domain_name = "lentago.dev"
+
+  target_group_arn   = module.site_lentago.target_group_arn
+  https_listener_arn = module.alb.https_listener_arn
+  alb_dns_name       = module.alb.alb_dns_name
+  alb_zone_id        = module.alb.alb_zone_id
+
+  # Unique vs pitzilabs preview (100) and lentago preview (110).
+  listener_rule_priority = 120
+
+  # lentago.dev sends no mail — preserve the "-all" SPF posture it had at Squarespace.
+  spf_txt = "v=spf1 -all"
+}
+
 # --- Phase 4: Data Layer ---
 module "rds" {
   source = "../../modules/rds"

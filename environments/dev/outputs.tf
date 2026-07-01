@@ -200,3 +200,13 @@ output "lentago_ecs_service_name" {
   description = "ECS service name for the Lentago Labs landing site"
   value       = module.site_lentago.service_name
 }
+
+output "lentago_domain_name_servers" {
+  description = "Nameservers to set at the registrar (Squarespace) for lentago.dev — the re-delegation step of the two-phase apex-domain apply."
+  value       = module.lentago_domain.name_servers
+}
+
+output "lentago_domain_url" {
+  description = "Public HTTPS URL for the promoted Lentago Labs site."
+  value       = module.lentago_domain.url
+}
