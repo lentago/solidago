@@ -318,7 +318,6 @@ data "aws_iam_policy_document" "github_actions" {
   }
 
   # Terraform state access — needs to read/write the S3 backend
-  # and the DynamoDB lock table
   statement {
     sid = "TerraformStateS3"
     actions = [
@@ -333,17 +332,6 @@ data "aws_iam_policy_document" "github_actions" {
     ]
   }
 
-  statement {
-    sid = "TerraformStateLock"
-    actions = [
-      "dynamodb:GetItem",
-      "dynamodb:PutItem",
-      "dynamodb:DeleteItem",
-    ]
-    resources = [
-      "arn:aws:dynamodb:${var.aws_region}:${var.aws_account_id}:table/foundry-tfstate-lock",
-    ]
-  }
 }
 
 resource "aws_iam_policy" "github_actions" {
@@ -439,22 +427,6 @@ data "aws_iam_policy_document" "github_actions_terraform" {
     ]
 
     resources = ["*"]
-  }
-
-  statement {
-    sid    = "TerraformStateLock"
-    effect = "Allow"
-
-    actions = [
-      "dynamodb:GetItem",
-      "dynamodb:PutItem",
-      "dynamodb:DeleteItem",
-      "dynamodb:DescribeTable",
-    ]
-
-    resources = [
-      "arn:aws:dynamodb:${var.aws_region}:${var.aws_account_id}:table/foundry-tfstate-lock",
-    ]
   }
 
   statement {

@@ -76,15 +76,9 @@ aws s3api put-public-access-block \
     "BlockPublicPolicy": true,
     "RestrictPublicBuckets": true
   }'
-
-# DynamoDB table for state locking
-aws dynamodb create-table \
-  --table-name foundry-tfstate-lock \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region us-east-1
 ```
+
+State locking uses S3-native locking (`use_lockfile = true`, Terraform 1.10+). No DynamoDB table is needed.
 
 ---
 
@@ -115,11 +109,11 @@ Update the backend configuration in `environments/dev/main.tf` to reference your
 
 ```hcl
 backend "s3" {
-  bucket         = "foundry-tfstate-YOUR_ACCOUNT_ID"
-  key            = "environments/dev/terraform.tfstate"
-  region         = "us-east-1"
-  dynamodb_table = "foundry-tfstate-lock"
-  encrypt        = true
+  bucket       = "foundry-tfstate-YOUR_ACCOUNT_ID"
+  key          = "environments/dev/terraform.tfstate"
+  region       = "us-east-1"
+  use_lockfile = true
+  encrypt      = true
 }
 ```
 
@@ -227,17 +221,6 @@ cat > /tmp/terraform-role-policy.json << 'EOF'
         "application-autoscaling:*"
       ],
       "Resource": "*"
-    },
-    {
-      "Sid": "TerraformStateLock",
-      "Effect": "Allow",
-      "Action": [
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:DescribeTable"
-      ],
-      "Resource": "arn:aws:dynamodb:us-east-1:YOUR_ACCOUNT_ID:table/foundry-tfstate-lock"
     },
     {
       "Sid": "CallerIdentity",
@@ -357,7 +340,7 @@ To bring it back up:
 terraform apply
 ```
 
-The Terraform state backend (S3 + DynamoDB) persists across destroy/apply cycles — you never lose your state.
+The Terraform state backend (S3) persists across destroy/apply cycles — you never lose your state.
 
 ---
 

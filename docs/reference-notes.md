@@ -26,7 +26,7 @@
 |------|-------|
 | State bucket name | foundry-tfstate-`<ACCOUNT_ID>` |
 | State bucket region | us-east-1 |
-| DynamoDB lock table | foundry-tfstate-lock |
+| State locking | S3-native (`use_lockfile = true`, Terraform 1.10+) |
 | State file key | env/dev/terraform.tfstate |
 
 ---
@@ -259,7 +259,7 @@ _These steps cannot be automated with Terraform and must be performed manually w
 |------|-------------|-----------------|-------------|
 | AWS account setup + MFA | Initial setup only | AWS Console | Yes |
 | Install CLI tools (terraform, aws, docker, kubectl, git) | Initial setup only | Package managers | Yes |
-| Bootstrap Terraform backend (S3 + DynamoDB) | Initial setup only | bootstrap script / AWS CLI | Yes |
+| Bootstrap Terraform backend (S3) | Initial setup only | bootstrap script / AWS CLI | Yes |
 | Add user to docker group | After OS reinstall | `sudo usermod -aG docker $USER` + restart terminal | Yes |
 | Authenticate Docker to ECR | Every 12 hours | `aws ecr get-login-password ... \| docker login ...` | Yes |
 | Build and push container image to ECR | After ECR repo creation or image changes | `docker build` + `docker push` | Yes |

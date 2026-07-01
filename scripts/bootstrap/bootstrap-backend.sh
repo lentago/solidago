@@ -10,7 +10,6 @@ if [[ -z "${ACCOUNT_ID}" ]]; then
   exit 1
 fi
 BUCKET_NAME="foundry-tfstate-${ACCOUNT_ID}"
-TABLE_NAME="foundry-tfstate-lock"
 
 echo "==> Creating S3 bucket for Terraform state..."
 aws s3api create-bucket \
@@ -46,17 +45,8 @@ aws s3api put-public-access-block \
     BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true \
   --profile "${AWS_PROFILE}"
 
-echo "==> Creating DynamoDB table for state locking..."
-aws dynamodb create-table \
-  --table-name "${TABLE_NAME}" \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST \
-  --region "${AWS_REGION}" \
-  --profile "${AWS_PROFILE}"
-
 echo ""
 echo "==> Bootstrap complete!"
 echo "    State bucket: ${BUCKET_NAME}"
-echo "    Lock table:   ${TABLE_NAME}"
 echo "    Region:       ${AWS_REGION}"
+echo "    Locking:      S3-native (use_lockfile = true)"

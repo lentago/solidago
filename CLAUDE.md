@@ -55,7 +55,7 @@ All Terraform commands run from `environments/dev/` (the only environment entry 
 | Domain | icecreamtofightwith.com |
 | GitHub org/repo | lentago/foundry-platform-demo |
 | State bucket | foundry-tfstate-`<ACCOUNT_ID>` |
-| Lock table | foundry-tfstate-lock |
+| State locking | S3-native (`use_lockfile = true`) |
 | AZs | us-east-1a, us-east-1b |
 
 ## Network Layout
