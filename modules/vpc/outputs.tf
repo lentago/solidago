@@ -10,19 +10,21 @@ output "vpc_cidr" {
   value       = aws_vpc.main.cidr_block
 }
 
+# Subnets are now for_each maps; iterate the AZ list to keep these outputs as
+# AZ-ordered list(string) values, matching what downstream consumers expect.
 output "public_subnet_ids" {
   description = "List of public subnet IDs"
-  value       = aws_subnet.public[*].id
+  value       = [for az in var.availability_zones : aws_subnet.public[az].id]
 }
 
 output "app_subnet_ids" {
   description = "List of application-tier subnet IDs"
-  value       = aws_subnet.app[*].id
+  value       = [for az in var.availability_zones : aws_subnet.app[az].id]
 }
 
 output "data_subnet_ids" {
   description = "List of data-tier subnet IDs"
-  value       = aws_subnet.data[*].id
+  value       = [for az in var.availability_zones : aws_subnet.data[az].id]
 }
 
 output "availability_zones" {

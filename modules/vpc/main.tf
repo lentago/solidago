@@ -14,41 +14,71 @@ resource "aws_internet_gateway" "main" {
     Name = "${var.project}-${var.environment}-igw"
   }
 }
+# Subnets are keyed by AZ name (for_each) so adding/removing an AZ never
+# reshuffles the remaining subnets' state addresses the way a list index would.
+# The map is built by zipping the AZ list against each tier's CIDR list.
 resource "aws_subnet" "public" {
-  count                   = length(var.public_subnet_cidrs)
+  for_each                = zipmap(var.availability_zones, var.public_subnet_cidrs)
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.public_subnet_cidrs[count.index]
-  availability_zone       = var.availability_zones[count.index]
+  cidr_block              = each.value
+  availability_zone       = each.key
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "${var.project}-${var.environment}-public-${count.index + 1}"
+    Name = "${var.project}-${var.environment}-public-${index(var.availability_zones, each.key) + 1}"
     Tier = "public"
   }
 }
 
 resource "aws_subnet" "app" {
-  count             = length(var.app_subnet_cidrs)
+  for_each          = zipmap(var.availability_zones, var.app_subnet_cidrs)
   vpc_id            = aws_vpc.main.id
-  cidr_block        = var.app_subnet_cidrs[count.index]
-  availability_zone = var.availability_zones[count.index]
+  cidr_block        = each.value
+  availability_zone = each.key
 
   tags = {
-    Name = "${var.project}-${var.environment}-app-${count.index + 1}"
+    Name = "${var.project}-${var.environment}-app-${index(var.availability_zones, each.key) + 1}"
     Tier = "app"
   }
 }
 
 resource "aws_subnet" "data" {
-  count             = length(var.data_subnet_cidrs)
+  for_each          = zipmap(var.availability_zones, var.data_subnet_cidrs)
   vpc_id            = aws_vpc.main.id
-  cidr_block        = var.data_subnet_cidrs[count.index]
-  availability_zone = var.availability_zones[count.index]
+  cidr_block        = each.value
+  availability_zone = each.key
 
   tags = {
-    Name = "${var.project}-${var.environment}-data-${count.index + 1}"
+    Name = "${var.project}-${var.environment}-data-${index(var.availability_zones, each.key) + 1}"
     Tier = "data"
   }
+}
+
+# Remap existing count-indexed state (index 0 -> us-east-1a, 1 -> us-east-1b)
+# onto the new AZ-keyed for_each addresses so no subnet is destroyed/recreated.
+moved {
+  from = aws_subnet.public[0]
+  to   = aws_subnet.public["us-east-1a"]
+}
+moved {
+  from = aws_subnet.public[1]
+  to   = aws_subnet.public["us-east-1b"]
+}
+moved {
+  from = aws_subnet.app[0]
+  to   = aws_subnet.app["us-east-1a"]
+}
+moved {
+  from = aws_subnet.app[1]
+  to   = aws_subnet.app["us-east-1b"]
+}
+moved {
+  from = aws_subnet.data[0]
+  to   = aws_subnet.data["us-east-1a"]
+}
+moved {
+  from = aws_subnet.data[1]
+  to   = aws_subnet.data["us-east-1b"]
 }
 resource "aws_eip" "nat" {
   count  = length(var.public_subnet_cidrs)
@@ -62,7 +92,7 @@ resource "aws_eip" "nat" {
 resource "aws_nat_gateway" "main" {
   count         = length(var.public_subnet_cidrs)
   allocation_id = aws_eip.nat[count.index].id
-  subnet_id     = aws_subnet.public[count.index].id
+  subnet_id     = aws_subnet.public[var.availability_zones[count.index]].id
 
   tags = {
     Name = "${var.project}-${var.environment}-nat-${count.index + 1}"
@@ -86,7 +116,7 @@ resource "aws_route_table" "public" {
 
 resource "aws_route_table_association" "public" {
   count          = length(var.public_subnet_cidrs)
-  subnet_id      = aws_subnet.public[count.index].id
+  subnet_id      = aws_subnet.public[var.availability_zones[count.index]].id
   route_table_id = aws_route_table.public.id
 }
 
@@ -107,13 +137,13 @@ resource "aws_route_table" "private" {
 
 resource "aws_route_table_association" "app" {
   count          = length(var.app_subnet_cidrs)
-  subnet_id      = aws_subnet.app[count.index].id
+  subnet_id      = aws_subnet.app[var.availability_zones[count.index]].id
   route_table_id = aws_route_table.private[count.index].id
 }
 
 resource "aws_route_table_association" "data" {
   count          = length(var.data_subnet_cidrs)
-  subnet_id      = aws_subnet.data[count.index].id
+  subnet_id      = aws_subnet.data[var.availability_zones[count.index]].id
   route_table_id = aws_route_table.private[count.index].id
 }
 resource "aws_cloudwatch_log_group" "flow_logs" {
@@ -168,11 +198,11 @@ resource "aws_iam_role_policy" "flow_logs" {
 }
 
 resource "aws_flow_log" "main" {
-  count                = var.enable_flow_logs ? 1 : 0
-  vpc_id               = aws_vpc.main.id
-  traffic_type         = "ALL"
-  iam_role_arn         = aws_iam_role.flow_logs[0].arn
-  log_destination      = aws_cloudwatch_log_group.flow_logs[0].arn
+  count                    = var.enable_flow_logs ? 1 : 0
+  vpc_id                   = aws_vpc.main.id
+  traffic_type             = "ALL"
+  iam_role_arn             = aws_iam_role.flow_logs[0].arn
+  log_destination          = aws_cloudwatch_log_group.flow_logs[0].arn
   max_aggregation_interval = 60
 
   tags = {
