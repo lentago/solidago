@@ -10,7 +10,7 @@
 # NS delegation stable across teardown/recreate cycles. See issue #48 and
 # docs/REGISTRAR_TRANSFER.md for the durable fix (move registrar to Route 53
 # Domains).
-resource "aws_route53_zone" "main" {
+resource "aws_route53_zone" "this" {
   name    = var.domain_name
   comment = "${var.project}-${var.environment} hosted zone"
 
@@ -27,7 +27,7 @@ resource "aws_route53_zone" "main" {
 # Requests a free public certificate from AWS Certificate Manager.
 # Uses DNS validation: ACM gives us a CNAME record to create in Route 53,
 # and once it sees that record, it issues the cert. Fully automated below.
-resource "aws_acm_certificate" "main" {
+resource "aws_acm_certificate" "this" {
   domain_name               = var.domain_name
   subject_alternative_names = var.subject_alternative_names
   validation_method         = "DNS"
@@ -51,7 +51,7 @@ resource "aws_acm_certificate" "main" {
 # domain and wildcard often share the same validation record.
 resource "aws_route53_record" "acm_validation" {
   for_each = {
-    for dvo in aws_acm_certificate.main.domain_validation_options : dvo.domain_name => {
+    for dvo in aws_acm_certificate.this.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
@@ -63,7 +63,7 @@ resource "aws_route53_record" "acm_validation" {
   records         = [each.value.record]
   ttl             = 60
   type            = each.value.type
-  zone_id         = aws_route53_zone.main.zone_id
+  zone_id         = aws_route53_zone.this.zone_id
 }
 
 # --- Certificate Validation Waiter ---
@@ -71,8 +71,8 @@ resource "aws_route53_record" "acm_validation" {
 # until ACM has verified the DNS records and actually issued the certificate.
 # Without this, Terraform would move on and the ALB listener would fail
 # because it's referencing a cert that hasn't been issued yet.
-resource "aws_acm_certificate_validation" "main" {
-  certificate_arn         = aws_acm_certificate.main.arn
+resource "aws_acm_certificate_validation" "this" {
+  certificate_arn         = aws_acm_certificate.this.arn
   validation_record_fqdns = [for record in aws_route53_record.acm_validation : record.fqdn]
 }
 # --- ALB Alias Record ---
@@ -84,7 +84,7 @@ resource "aws_acm_certificate_validation" "main" {
 resource "aws_route53_record" "alb_alias" {
   count = var.create_alb_alias ? 1 : 0
 
-  zone_id = aws_route53_zone.main.zone_id
+  zone_id = aws_route53_zone.this.zone_id
   name    = var.domain_name
   type    = "A"
 
@@ -93,4 +93,19 @@ resource "aws_route53_record" "alb_alias" {
     zone_id                = var.alb_zone_id
     evaluate_target_health = true
   }
+}
+
+moved {
+  from = aws_route53_zone.main
+  to   = aws_route53_zone.this
+}
+
+moved {
+  from = aws_acm_certificate.main
+  to   = aws_acm_certificate.this
+}
+
+moved {
+  from = aws_acm_certificate_validation.main
+  to   = aws_acm_certificate_validation.this
 }

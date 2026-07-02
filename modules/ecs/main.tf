@@ -17,7 +17,7 @@ resource "aws_cloudwatch_log_group" "app" {
 # A logical grouping for services and tasks. Container Insights gives
 # us cluster-level metrics (CPU, memory, network) in CloudWatch at
 # no additional cost for the basic tier.
-resource "aws_ecs_cluster" "main" {
+resource "aws_ecs_cluster" "this" {
   name = "${var.project}-${var.environment}-cluster"
 
   setting {
@@ -87,7 +87,7 @@ resource "aws_ecs_task_definition" "app" {
 # - Distributing tasks across AZs for high availability
 resource "aws_ecs_service" "app" {
   name            = "${var.project}-${var.environment}-app"
-  cluster         = aws_ecs_cluster.main.id
+  cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.app.arn
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
@@ -149,4 +149,9 @@ resource "aws_ecs_service" "app" {
   lifecycle {
     ignore_changes = [task_definition, desired_count]
   }
+}
+
+moved {
+  from = aws_ecs_cluster.main
+  to   = aws_ecs_cluster.this
 }

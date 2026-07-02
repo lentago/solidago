@@ -103,7 +103,7 @@ resource "aws_iam_role_policy" "config_delivery" {
 # resources (only needed in one region — our primary us-east-1).
 # -----------------------------------------------------------------------------
 
-resource "aws_config_configuration_recorder" "main" {
+resource "aws_config_configuration_recorder" "this" {
   name     = "${var.project}-${var.environment}"
   role_arn = aws_iam_role.config.arn
 
@@ -126,7 +126,7 @@ resource "aws_config_configuration_recorder" "main" {
 # not so frequent that it generates excessive S3 writes.
 # -----------------------------------------------------------------------------
 
-resource "aws_config_delivery_channel" "main" {
+resource "aws_config_delivery_channel" "this" {
   name           = "${var.project}-${var.environment}"
   s3_bucket_name = var.s3_bucket_name
   s3_key_prefix  = var.s3_key_prefix
@@ -136,7 +136,7 @@ resource "aws_config_delivery_channel" "main" {
     delivery_frequency = "Six_Hours"
   }
 
-  depends_on = [aws_config_configuration_recorder.main]
+  depends_on = [aws_config_configuration_recorder.this]
 }
 
 
@@ -148,11 +148,11 @@ resource "aws_config_delivery_channel" "main" {
 # delivery channel (otherwise there's nowhere for Config to send data).
 # -----------------------------------------------------------------------------
 
-resource "aws_config_configuration_recorder_status" "main" {
-  name       = aws_config_configuration_recorder.main.name
+resource "aws_config_configuration_recorder_status" "this" {
+  name       = aws_config_configuration_recorder.this.name
   is_enabled = true
 
-  depends_on = [aws_config_delivery_channel.main]
+  depends_on = [aws_config_delivery_channel.this]
 }
 
 
@@ -201,9 +201,24 @@ resource "aws_config_config_rule" "rules" {
     source_identifier = each.value.source_identifier
   }
 
-  depends_on = [aws_config_configuration_recorder_status.main]
+  depends_on = [aws_config_configuration_recorder_status.this]
 
   tags = {
     Name = "${var.project}-${var.environment}-${each.key}"
   }
+}
+
+moved {
+  from = aws_config_configuration_recorder.main
+  to   = aws_config_configuration_recorder.this
+}
+
+moved {
+  from = aws_config_delivery_channel.main
+  to   = aws_config_delivery_channel.this
+}
+
+moved {
+  from = aws_config_configuration_recorder_status.main
+  to   = aws_config_configuration_recorder_status.this
 }

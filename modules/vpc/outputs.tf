@@ -2,12 +2,12 @@
 
 output "vpc_id" {
   description = "ID of the VPC"
-  value       = aws_vpc.main.id
+  value       = aws_vpc.this.id
 }
 
 output "vpc_cidr" {
   description = "CIDR block of the VPC"
-  value       = aws_vpc.main.cidr_block
+  value       = aws_vpc.this.cidr_block
 }
 
 output "public_subnet_ids" {
@@ -37,10 +37,10 @@ output "nat_gateway_ips" {
 
 output "nat_gateway_ids" {
   description = "IDs of the NAT Gateways"
-  value       = aws_nat_gateway.main[*].id
+  value       = aws_nat_gateway.this[*].id
 }
 
 output "internet_gateway_id" {
   description = "ID of the Internet Gateway"
-  value       = aws_internet_gateway.main.id
+  value       = aws_internet_gateway.this.id
 }

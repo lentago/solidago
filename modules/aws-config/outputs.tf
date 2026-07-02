@@ -2,7 +2,7 @@
 
 output "recorder_name" {
   description = "Name of the AWS Config configuration recorder"
-  value       = aws_config_configuration_recorder.main.name
+  value       = aws_config_configuration_recorder.this.name
 }
 
 output "config_role_arn" {

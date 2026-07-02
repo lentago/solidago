@@ -4,7 +4,7 @@
 # The ALB itself is a managed AWS resource that spans multiple AZs.
 # Setting internal=false makes it internet-facing (reachable from the public internet).
 # It lives in public subnets because it needs a public IP to receive traffic from the internet.
-resource "aws_lb" "main" {
+resource "aws_lb" "this" {
   name               = "${var.project}-${var.environment}-alb"
   internal           = false
   load_balancer_type = "application"
@@ -76,7 +76,7 @@ resource "aws_lb_target_group" "app" {
 # Traffic from the ALB to the containers is HTTP on the internal network,
 # which is acceptable because it's within the VPC (no internet traversal).
 resource "aws_lb_listener" "https" {
-  load_balancer_arn = aws_lb.main.arn
+  load_balancer_arn = aws_lb.this.arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
@@ -98,7 +98,7 @@ resource "aws_lb_listener" "https" {
 # Without this, users who type "icecreamtofightwith.com" (without https://) would
 # get a connection refused error instead of being redirected.
 resource "aws_lb_listener" "http_redirect" {
-  load_balancer_arn = aws_lb.main.arn
+  load_balancer_arn = aws_lb.this.arn
   port              = 80
   protocol          = "HTTP"
 
@@ -115,4 +115,9 @@ resource "aws_lb_listener" "http_redirect" {
   tags = {
     Name = "${var.project}-${var.environment}-http-redirect"
   }
+}
+
+moved {
+  from = aws_lb.main
+  to   = aws_lb.this
 }

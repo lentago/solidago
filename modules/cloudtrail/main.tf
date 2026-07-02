@@ -34,7 +34,7 @@
 # deliver events and how to encrypt them.
 # -----------------------------------------------------------------------------
 
-resource "aws_cloudtrail" "main" {
+resource "aws_cloudtrail" "this" {
   name = "${var.project}-${var.environment}-trail"
 
   s3_bucket_name = var.s3_bucket_name
@@ -51,4 +51,9 @@ resource "aws_cloudtrail" "main" {
   tags = {
     Name = "${var.project}-${var.environment}-trail"
   }
+}
+
+moved {
+  from = aws_cloudtrail.main
+  to   = aws_cloudtrail.this
 }

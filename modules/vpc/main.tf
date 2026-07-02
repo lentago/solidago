@@ -1,4 +1,4 @@
-resource "aws_vpc" "main" {
+resource "aws_vpc" "this" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
@@ -7,8 +7,8 @@ resource "aws_vpc" "main" {
     Name = "${var.project}-${var.environment}-vpc"
   }
 }
-resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main.id
+resource "aws_internet_gateway" "this" {
+  vpc_id = aws_vpc.this.id
 
   tags = {
     Name = "${var.project}-${var.environment}-igw"
@@ -16,7 +16,7 @@ resource "aws_internet_gateway" "main" {
 }
 resource "aws_subnet" "public" {
   count                   = length(var.public_subnet_cidrs)
-  vpc_id                  = aws_vpc.main.id
+  vpc_id                  = aws_vpc.this.id
   cidr_block              = var.public_subnet_cidrs[count.index]
   availability_zone       = var.availability_zones[count.index]
   map_public_ip_on_launch = true
@@ -29,7 +29,7 @@ resource "aws_subnet" "public" {
 
 resource "aws_subnet" "app" {
   count             = length(var.app_subnet_cidrs)
-  vpc_id            = aws_vpc.main.id
+  vpc_id            = aws_vpc.this.id
   cidr_block        = var.app_subnet_cidrs[count.index]
   availability_zone = var.availability_zones[count.index]
 
@@ -41,7 +41,7 @@ resource "aws_subnet" "app" {
 
 resource "aws_subnet" "data" {
   count             = length(var.data_subnet_cidrs)
-  vpc_id            = aws_vpc.main.id
+  vpc_id            = aws_vpc.this.id
   cidr_block        = var.data_subnet_cidrs[count.index]
   availability_zone = var.availability_zones[count.index]
 
@@ -59,7 +59,7 @@ resource "aws_eip" "nat" {
   }
 }
 
-resource "aws_nat_gateway" "main" {
+resource "aws_nat_gateway" "this" {
   count         = length(var.public_subnet_cidrs)
   allocation_id = aws_eip.nat[count.index].id
   subnet_id     = aws_subnet.public[count.index].id
@@ -68,15 +68,15 @@ resource "aws_nat_gateway" "main" {
     Name = "${var.project}-${var.environment}-nat-${count.index + 1}"
   }
 
-  depends_on = [aws_internet_gateway.main]
+  depends_on = [aws_internet_gateway.this]
 }
 # Public route table — shared by all public subnets
 resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
+  vpc_id = aws_vpc.this.id
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
+    gateway_id = aws_internet_gateway.this.id
   }
 
   tags = {
@@ -93,11 +93,11 @@ resource "aws_route_table_association" "public" {
 # Private route tables — one per AZ, pointing to the AZ-local NAT
 resource "aws_route_table" "private" {
   count  = length(var.availability_zones)
-  vpc_id = aws_vpc.main.id
+  vpc_id = aws_vpc.this.id
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main[count.index].id
+    nat_gateway_id = aws_nat_gateway.this[count.index].id
   }
 
   tags = {
@@ -167,16 +167,36 @@ resource "aws_iam_role_policy" "flow_logs" {
   })
 }
 
-resource "aws_flow_log" "main" {
-  count                = var.enable_flow_logs ? 1 : 0
-  vpc_id               = aws_vpc.main.id
-  traffic_type         = "ALL"
-  iam_role_arn         = aws_iam_role.flow_logs[0].arn
-  log_destination      = aws_cloudwatch_log_group.flow_logs[0].arn
+resource "aws_flow_log" "this" {
+  count                    = var.enable_flow_logs ? 1 : 0
+  vpc_id                   = aws_vpc.this.id
+  traffic_type             = "ALL"
+  iam_role_arn             = aws_iam_role.flow_logs[0].arn
+  log_destination          = aws_cloudwatch_log_group.flow_logs[0].arn
   max_aggregation_interval = 60
 
   tags = {
     Name = "${var.project}-${var.environment}-flow-log"
   }
+}
+
+moved {
+  from = aws_vpc.main
+  to   = aws_vpc.this
+}
+
+moved {
+  from = aws_internet_gateway.main
+  to   = aws_internet_gateway.this
+}
+
+moved {
+  from = aws_nat_gateway.main
+  to   = aws_nat_gateway.this
+}
+
+moved {
+  from = aws_flow_log.main
+  to   = aws_flow_log.this
 }
 

@@ -1,4 +1,4 @@
-resource "aws_wafv2_web_acl" "main" {
+resource "aws_wafv2_web_acl" "this" {
   name        = "${var.project}-${var.environment}-waf"
   description = "WAF Web ACL for ${var.project}-${var.environment} ALB"
   scope       = "REGIONAL"
@@ -116,5 +116,10 @@ resource "aws_wafv2_web_acl" "main" {
 
 resource "aws_wafv2_web_acl_association" "alb" {
   resource_arn = var.alb_arn
-  web_acl_arn  = aws_wafv2_web_acl.main.arn
+  web_acl_arn  = aws_wafv2_web_acl.this.arn
+}
+
+moved {
+  from = aws_wafv2_web_acl.main
+  to   = aws_wafv2_web_acl.this
 }

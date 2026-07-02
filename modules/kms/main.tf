@@ -18,9 +18,9 @@
 # and the one we're using — the root statement is your safety net.
 # =============================================================================
 
-resource "aws_kms_key" "main" {
+resource "aws_kms_key" "this" {
   description             = "${var.project}-${var.environment} main encryption key"
-  deletion_window_in_days = 30  # Safety net — key isn't actually deleted for 30 days
+  deletion_window_in_days = 30   # Safety net — key isn't actually deleted for 30 days
   enable_key_rotation     = true # Automatic annual rotation. No reason not to.
 
   policy = jsonencode({
@@ -45,7 +45,7 @@ resource "aws_kms_key" "main" {
             AWS = "arn:aws:iam::${var.aws_account_id}:root"
           }
           Action   = "kms:*"
-          Resource = "*"  # In a key policy, "*" means "this key" — not all keys
+          Resource = "*" # In a key policy, "*" means "this key" — not all keys
         },
 
         # -----------------------------------------------------------------
@@ -191,7 +191,17 @@ resource "aws_kms_key" "main" {
 # An alias is a human-friendly name for the key. Without this, you'd
 # reference the key everywhere by its ARN or key ID (a UUID), which is
 # painful. The "alias/" prefix is required by AWS.
-resource "aws_kms_alias" "main" {
+resource "aws_kms_alias" "this" {
   name          = "alias/${var.project}-${var.environment}-main"
-  target_key_id = aws_kms_key.main.key_id
+  target_key_id = aws_kms_key.this.key_id
+}
+
+moved {
+  from = aws_kms_key.main
+  to   = aws_kms_key.this
+}
+
+moved {
+  from = aws_kms_alias.main
+  to   = aws_kms_alias.this
 }

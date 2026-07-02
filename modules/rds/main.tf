@@ -15,7 +15,7 @@
 # --- DB Subnet Group ---
 # Tells RDS which subnets to place the instance (and standby) in.
 # Must span at least two AZs for Multi-AZ deployments.
-resource "aws_db_subnet_group" "main" {
+resource "aws_db_subnet_group" "this" {
   name       = "${var.project}-${var.environment}-db-subnet-group"
   subnet_ids = var.data_subnet_ids
 
@@ -27,7 +27,7 @@ resource "aws_db_subnet_group" "main" {
 # --- Parameter Group ---
 # Custom parameter group so we can tune PostgreSQL settings without
 # modifying the default group (which can't be changed).
-resource "aws_db_parameter_group" "main" {
+resource "aws_db_parameter_group" "this" {
   name   = "${var.project}-${var.environment}-pg16"
   family = "postgres16"
 
@@ -56,8 +56,8 @@ resource "aws_db_parameter_group" "main" {
 
   # Enable pg_stat_statements for query performance tracking
   parameter {
-    name  = "shared_preload_libraries"
-    value = "pg_stat_statements"
+    name         = "shared_preload_libraries"
+    value        = "pg_stat_statements"
     apply_method = "pending-reboot"
   }
 
@@ -71,7 +71,7 @@ resource "aws_db_parameter_group" "main" {
 }
 
 # --- RDS Instance ---
-resource "aws_db_instance" "main" {
+resource "aws_db_instance" "this" {
   identifier = "${var.project}-${var.environment}-postgres"
 
   # Engine configuration
@@ -83,8 +83,8 @@ resource "aws_db_instance" "main" {
   allocated_storage     = var.allocated_storage
   max_allocated_storage = 100
   storage_type          = "gp3"
-  storage_encrypted = true
-  kms_key_id        = var.kms_key_arn
+  storage_encrypted     = true
+  kms_key_id            = var.kms_key_arn
 
   # Database
   db_name = var.db_name
@@ -92,11 +92,11 @@ resource "aws_db_instance" "main" {
   # Credentials — RDS manages the master password and stores it in
   # Secrets Manager automatically. No password in Terraform state.
   username                      = var.master_username
-  manage_master_user_password = true
+  manage_master_user_password   = true
   master_user_secret_kms_key_id = var.kms_key_arn
 
   # Networking
-  db_subnet_group_name   = aws_db_subnet_group.main.name
+  db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [var.rds_security_group_id]
   publicly_accessible    = false
   port                   = 5432
@@ -105,7 +105,7 @@ resource "aws_db_instance" "main" {
   multi_az = var.multi_az
 
   # Parameter group
-  parameter_group_name = aws_db_parameter_group.main.name
+  parameter_group_name = aws_db_parameter_group.this.name
 
   # Backups
   backup_retention_period = var.backup_retention_period
@@ -122,11 +122,26 @@ resource "aws_db_instance" "main" {
   copy_tags_to_snapshot = true
 
   # Performance Insights (free tier for db.t4g.micro)
-  performance_insights_enabled    = true
-  performance_insights_kms_key_id = var.kms_key_arn
+  performance_insights_enabled          = true
+  performance_insights_kms_key_id       = var.kms_key_arn
   performance_insights_retention_period = 7
 
   tags = {
     Name = "${var.project}-${var.environment}-postgres"
   }
+}
+
+moved {
+  from = aws_db_subnet_group.main
+  to   = aws_db_subnet_group.this
+}
+
+moved {
+  from = aws_db_parameter_group.main
+  to   = aws_db_parameter_group.this
+}
+
+moved {
+  from = aws_db_instance.main
+  to   = aws_db_instance.this
 }

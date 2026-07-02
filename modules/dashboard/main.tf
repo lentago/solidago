@@ -1,4 +1,4 @@
-resource "aws_cloudwatch_dashboard" "main" {
+resource "aws_cloudwatch_dashboard" "this" {
   dashboard_name = "${var.project}-${var.environment}"
 
   dashboard_body = jsonencode({
@@ -298,4 +298,9 @@ resource "aws_cloudwatch_dashboard" "main" {
       }
     ]
   })
+}
+
+moved {
+  from = aws_cloudwatch_dashboard.main
+  to   = aws_cloudwatch_dashboard.this
 }

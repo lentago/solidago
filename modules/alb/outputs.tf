@@ -2,7 +2,7 @@
 
 output "alb_arn" {
   description = "ARN of the Application Load Balancer"
-  value       = aws_lb.main.arn
+  value       = aws_lb.this.arn
 }
 
 output "https_listener_arn" {
@@ -12,12 +12,12 @@ output "https_listener_arn" {
 
 output "alb_dns_name" {
   description = "DNS name of the ALB (used for Route 53 alias record)"
-  value       = aws_lb.main.dns_name
+  value       = aws_lb.this.dns_name
 }
 
 output "alb_zone_id" {
   description = "Hosted zone ID of the ALB (needed for Route 53 alias record)"
-  value       = aws_lb.main.zone_id
+  value       = aws_lb.this.zone_id
 }
 
 output "target_group_arn" {
@@ -27,7 +27,7 @@ output "target_group_arn" {
 
 output "alb_arn_suffix" {
   description = "ARN suffix of the ALB (used as CloudWatch dimension)"
-  value       = aws_lb.main.arn_suffix
+  value       = aws_lb.this.arn_suffix
 }
 
 output "target_group_arn_suffix" {
