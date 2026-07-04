@@ -372,7 +372,7 @@ Merge the PR. The Terraform Apply job should:
 
 ### App deploy pipeline
 
-Push a change to a workload repo (e.g., `ice-cream-book`). Its own deploy workflow should assume the `foundry-dev-github-actions` role via OIDC, build the container, push it to ECR, and update the ECS service. Workload deploys run entirely from the workload repo — nothing is dispatched back into this repo.
+Push a change to a workload repo (e.g., `site-icecreamtofightwith-com`). Its own deploy workflow should assume the `foundry-dev-github-actions` role via OIDC, build the container, push it to ECR, and update the ECS service. Workload deploys run entirely from the workload repo — nothing is dispatched back into this repo.
 
 ---
 

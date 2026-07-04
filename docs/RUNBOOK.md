@@ -185,7 +185,7 @@ back — a targeted apply would miss them.
 - **ECR was kept**, so images survive and the sites serve immediately.
 - If a site returns **503**, its ECR repo is empty (constraint b): re-run that
   workload repo's **Build & Deploy** workflow (e.g.
-  [ice-cream-book](https://github.com/lentago/ice-cream-book)) to re-push the
+  [site-icecreamtofightwith-com](https://github.com/lentago/site-icecreamtofightwith-com)) to re-push the
   image. Terraform recreates the ECR repo and ECS service but never the image.
 
 ---

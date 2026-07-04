@@ -32,7 +32,7 @@ A three-tier web application running on AWS, fully managed by Terraform:
 
 **CI/CD:** This repo runs one Terraform pipeline; workload deploys run from their own repos.
 - **Terraform** — plans on PR (with plan output posted as a PR comment), applies on merge to main. IAM role scoped to the `terraform` GitHub environment via OIDC sub-claim, so only this workflow can mutate infrastructure.
-- **Workload deploys** — each workload builds and deploys from its own repository, assuming the platform-owned `foundry-dev-github-actions` IAM role via OIDC. The role's trust policy lists the workload repos ([ice-cream-book](https://github.com/lentago/ice-cream-book) plus the platform-hosted landing sites), so only those repos' workflows can push to ECR and update ECS.
+- **Workload deploys** — each workload builds and deploys from its own repository, assuming the platform-owned `foundry-dev-github-actions` IAM role via OIDC. The role's trust policy lists the workload repos ([site-icecreamtofightwith-com](https://github.com/lentago/site-icecreamtofightwith-com) plus the platform-hosted landing sites), so only those repos' workflows can push to ECR and update ECS.
 
 ## Architecture
 
@@ -121,7 +121,7 @@ solidago/
     └── RUNBOOK.md               # Selective teardown / standup for cost saving
 ```
 
-Workload code (the Astro application, its Dockerfile, and its deploy workflow) lives in [ice-cream-book](https://github.com/lentago/ice-cream-book), not in this repo.
+Workload code (the Astro application, its Dockerfile, and its deploy workflow) lives in [site-icecreamtofightwith-com](https://github.com/lentago/site-icecreamtofightwith-com), not in this repo.
 
 ## Design Decisions
 
@@ -151,7 +151,7 @@ For a portfolio project demonstrating AWS skills, native CloudWatch is the right
 
 ### Platform, Not a Single-App Deployment
 
-The infrastructure is deliberately decoupled from the application it hosts. The ECS cluster, ALB, data tier, and IAM trust scaffolding are general-purpose — any containerized workload can slot in by pushing an image to ECR and updating the task definition. A static Astro site, a Node.js API, a Python Flask service, or a scheduled batch job would all deploy through the same primitives with different Dockerfiles. Workloads live in their own repos and authenticate into platform resources via OIDC, scoped per-workload by the IAM role's trust policy — see [ice-cream-book](https://github.com/lentago/ice-cream-book) for the first concrete workload. This is proven in practice: the [Lentago Labs landing page](https://lentago.dev) runs as a second workload on the same ALB and ECS cluster via `modules/site` (its own ECR repo, task definition, target group, and host-header listener rule), with `modules/apex-domain` fronting it with the registered `lentago.dev` domain (own Route 53 zone, ACM cert attached to the shared HTTPS listener via SNI, and Fastmail mail records). RDS and ElastiCache are available to any workload in the app subnets. The architecture is a foundation, not a one-off.
+The infrastructure is deliberately decoupled from the application it hosts. The ECS cluster, ALB, data tier, and IAM trust scaffolding are general-purpose — any containerized workload can slot in by pushing an image to ECR and updating the task definition. A static Astro site, a Node.js API, a Python Flask service, or a scheduled batch job would all deploy through the same primitives with different Dockerfiles. Workloads live in their own repos and authenticate into platform resources via OIDC, scoped per-workload by the IAM role's trust policy — see [site-icecreamtofightwith-com](https://github.com/lentago/site-icecreamtofightwith-com) for the first concrete workload. This is proven in practice: the [Lentago Labs landing page](https://lentago.dev) runs as a second workload on the same ALB and ECS cluster via `modules/site` (its own ECR repo, task definition, target group, and host-header listener rule), with `modules/apex-domain` fronting it with the registered `lentago.dev` domain (own Route 53 zone, ACM cert attached to the shared HTTPS listener via SNI, and Fastmail mail records). RDS and ElastiCache are available to any workload in the app subnets. The architecture is a foundation, not a one-off.
 
 ### Daily Destroy/Apply Pattern
 
@@ -167,8 +167,8 @@ With all resources running 24/7, the environment costs approximately $130-140/mo
 
 ## Related Repositories
 
-- [**ice-cream-book**](https://github.com/lentago/ice-cream-book) — The first workload running on this platform. Holds both the recipe content and the Astro/Nginx application; deploys directly into this platform's ECR/ECS/IAM resources via OIDC.
-- [**lentagolabs-dev**](https://github.com/lentago/lentagolabs-dev) — The Lentago Labs landing site served at [lentago.dev](https://lentago.dev); a second workload hosted on the shared platform via `modules/site` + `modules/apex-domain`.
+- [**site-icecreamtofightwith-com**](https://github.com/lentago/site-icecreamtofightwith-com) — The first workload running on this platform. Holds both the recipe content and the Astro/Nginx application; deploys directly into this platform's ECR/ECS/IAM resources via OIDC.
+- [**site-lentago-dev**](https://github.com/lentago/site-lentago-dev) — The Lentago Labs landing site served at [lentago.dev](https://lentago.dev); a second workload hosted on the shared platform via `modules/site` + `modules/apex-domain`.
 - [**lentago**](https://github.com/lentago) — GitHub organization housing this and related projects.
 
 ## License
