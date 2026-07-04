@@ -42,7 +42,7 @@ terraform output
 
 ```
 
-Container image builds happen in the workload repo's deploy workflow (see [ice-cream-book](https://github.com/lentago/ice-cream-book)/.github/workflows/deploy.yml), not from this repo. This repo manages the ECR registry, ECS cluster/service, and IAM trust — not the image itself.
+Container image builds happen in the workload repo's deploy workflow (see [site-icecreamtofightwith-com](https://github.com/lentago/site-icecreamtofightwith-com)/.github/workflows/deploy.yml — renamed from `ice-cream-book` 2026-07-04), not from this repo. This repo manages the ECR registry, ECS cluster/service, and IAM trust — not the image itself.
 
 All Terraform commands run from `environments/dev/` (the only environment entry point currently).
 
@@ -125,7 +125,7 @@ PR workflow + auto-merge arming protocol is fleet-wide; see `~/repos/CLAUDE.md`.
 - `environments/dev/outputs.tf` — what each module exposes
 - `environments/dev/backend.tf` — remote state configuration (S3 backend, S3-native locking, SSE-KMS via the bootstrap-managed `alias/foundry-tfstate` CMK)
 - `modules/*/variables.tf` — what each module accepts
-- `modules/iam/main.tf` — OIDC roles. `foundry-dev-github-actions` (trusts the workload repo `ice-cream-book` via `var.app_github_repo`) deploys containers and updates ECS; `foundry-dev-github-actions-terraform` (trusts this repo's `terraform` environment) runs the Terraform pipeline. The split keeps platform mutations and workload deploys on separate credentials.
+- `modules/iam/main.tf` — OIDC roles. `foundry-dev-github-actions` (trusts the workload repo `site-icecreamtofightwith-com`, née `ice-cream-book`, via `var.app_github_repo` + `additional_app_github_repos` — old names dual-trusted during the 2026-07-04 site-repo rename transition) deploys containers and updates ECS; `foundry-dev-github-actions-terraform` (trusts this repo's `terraform` environment) runs the Terraform pipeline. The split keeps platform mutations and workload deploys on separate credentials.
 
 ## Project Phases
 

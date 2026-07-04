@@ -75,12 +75,21 @@ module "iam" {
   app_github_repo           = "ice-cream-book" # App deploy role's OIDC trust (post-#55 split)
 
   # Additional workload repos that deploy onto this platform via the same app
-  # OIDC role. The Pitzi Labs landing site (pitzilabs-dev) and the Lentago Labs
-  # landing site (lentagolabs-dev) ride on the shared ALB — see
-  # module.site_pitzilabs / module.site_lentago below. The role's ECR/ECS
-  # permissions are already account-scoped, so this trust entry is all that's
-  # needed.
-  additional_app_github_repos = ["pitzilabs-dev", "lentagolabs-dev"]
+  # OIDC role. The site repos were renamed 2026-07-04 to the site-<domain>
+  # convention (ice-cream-book → site-icecreamtofightwith-com, lentagolabs-dev
+  # → site-lentago-dev, pitzilabs-dev → site-pitzilabs-dev); both old and new
+  # names are trusted during the transition — prune the old three (and flip
+  # app_github_repo above) once the renamed repos' deploys are proven green.
+  # The sites ride on the shared ALB — see module.site_pitzilabs /
+  # module.site_lentago below. The role's ECR/ECS permissions are already
+  # account-scoped, so this trust entry is all that's needed.
+  additional_app_github_repos = [
+    "pitzilabs-dev",
+    "lentagolabs-dev",
+    "site-icecreamtofightwith-com",
+    "site-pitzilabs-dev",
+    "site-lentago-dev",
+  ]
 
   # Phase 4: grant ECS roles access to RDS-managed secrets
   rds_managed_secret_access = true
