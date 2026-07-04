@@ -1,6 +1,6 @@
 # How Workloads Relate to This Platform
 
-This document describes how a workload (an application that runs on this platform) integrates with the infrastructure managed in this repo. The first concrete example is [`lentago/ice-cream-book`](https://github.com/lentago/ice-cream-book), which holds both the Astro/Nginx source for **icecreamtofightwith.com** and the deploy workflow that ships it.
+This document describes how a workload (an application that runs on this platform) integrates with the infrastructure managed in this repo. The first concrete example is [`lentago/site-icecreamtofightwith-com`](https://github.com/lentago/site-icecreamtofightwith-com), which holds both the Astro/Nginx source for **icecreamtofightwith.com** and the deploy workflow that ships it.
 
 Before the platform/workload split (issue #55), the application source lived under `app/` in this repo and a cross-repo `repository_dispatch` triggered the deploy from a content-source repo. That coupling is gone — this repo now provides infrastructure only.
 
@@ -44,7 +44,7 @@ No stored AWS credentials in GitHub Secrets. The trust policy ensures only the c
 
 ## Onboarding a Second Workload
 
-To add a second workload (e.g., `pitzilabs.dev`):
+To add a second workload (e.g., `lentago.dev`):
 
 1. Decide the IAM model: share `foundry-dev-github-actions` (simpler, requires re-pointing the trust policy if only one workload is live at a time) or add a second role (more isolated, more Terraform churn).
 2. If sharing: update `app_github_repo` — but this changes which repo can deploy. Multi-workload sharing isn't supported by a single trust `repo:` clause; for two concurrent workloads add a second IAM role with its own trust pattern.

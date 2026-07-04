@@ -34,7 +34,7 @@ jobs:
            need multiple applies, missing `variable` validation, count/for_each
            pitfalls, and provider/version drift.
         2. **AWS security posture** — IAM least-privilege (especially the OIDC
-           trust that ice-cream-book's deploy assumes), security-group
+           trust that site-icecreamtofightwith-com's deploy assumes), security-group
            exposure, public vs. private subnet placement, encryption at
            rest/in transit.
         3. **Idempotency & state** — will `apply` converge cleanly? Flag

@@ -1,4 +1,4 @@
-# Foundry Platform — Central Reference Notes
+# Solidago Platform — Central Reference Notes
 
 > **This is a living document.** Update it as each phase progresses. Upload to your Claude Project knowledge base so every conversation has context.
 
@@ -13,7 +13,7 @@
 | Root email | _TBD_ | MFA enabled: ✅ |
 | IAM admin username | cpitzi-iac | MFA enabled: ✅ |
 | AWS CLI profile name | foundry | |
-| GitHub repo | foundry-platform-demo | https://github.com/lentago/foundry-platform-demo |
+| GitHub repo | solidago (renamed from foundry-platform-demo 2026-07-03) | https://github.com/lentago/solidago |
 | GitHub username | cpitzi | |
 | Domain name | _TBD_ | Cheap domain, Phase 3 |
 | Local OS | ChromeOS w/ Linux dev env (Debian-based) | |
@@ -92,7 +92,7 @@
 | Route 53 hosted zone ID | Captured from `terraform output route53_zone_id` after first apply. Locked by `prevent_destroy`. |
 | Route 53 nameservers | Captured from `terraform output route53_name_servers` after first apply. Authoritative — `prevent_destroy` on the zone keeps these stable across teardown cycles. |
 | Domain name | icecreamtofightwith.com |
-| Domain registrar | Squarespace (nameservers delegated to Route 53). Transfer to Route 53 Domains planned — see [issue #48](https://github.com/lentago/foundry-platform-demo/issues/48) and `docs/REGISTRAR_TRANSFER.md`. |
+| Domain registrar | Squarespace (nameservers delegated to Route 53). Transfer to Route 53 Domains planned — see [issue #48](https://github.com/lentago/solidago/issues/48) and `docs/REGISTRAR_TRANSFER.md`. |
 | CloudWatch log group | /ecs/foundry-dev-app |
 | ECS auto-scaling | Not yet configured (Phase 3d) |
 
