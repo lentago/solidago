@@ -37,6 +37,8 @@ jobs:
     env:
       TF_VAR_pitzilabs_preview_host: ${{ vars.PITZILABS_PREVIEW_HOST }}
       TF_VAR_lentago_preview_host: ${{ vars.LENTAGO_PREVIEW_HOST }}
+      TF_VAR_grafana_cloud_account_id: ${{ vars.GRAFANA_CLOUD_ACCOUNT_ID }}
+      TF_VAR_grafana_cloud_external_id: ${{ secrets.GRAFANA_CLOUD_EXTERNAL_ID }}
     defaults:
       run:
         working-directory: environments/dev
@@ -105,6 +107,8 @@ jobs:
     env:
       TF_VAR_pitzilabs_preview_host: ${{ vars.PITZILABS_PREVIEW_HOST }}
       TF_VAR_lentago_preview_host: ${{ vars.LENTAGO_PREVIEW_HOST }}
+      TF_VAR_grafana_cloud_account_id: ${{ vars.GRAFANA_CLOUD_ACCOUNT_ID }}
+      TF_VAR_grafana_cloud_external_id: ${{ secrets.GRAFANA_CLOUD_EXTERNAL_ID }}
     defaults:
       run:
         working-directory: environments/dev

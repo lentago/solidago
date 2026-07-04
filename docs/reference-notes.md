@@ -308,3 +308,17 @@ _Things that bit us and how we fixed them._
 | Terraform "count depends on resource attributes that cannot be determined until apply" | Can't use `count` with a value that's `known after apply`. Replace with a boolean variable that's set to a literal value (`true`/`false`) in the module call. Boolean is known at plan time. | 2026-02-28 |
 | Docker "permission denied" on /var/run/docker.sock | User not in docker group. `sudo usermod -aG docker $USER` then restart terminal or `newgrp docker`. | 2026-02-28 |
 | 503 from ALB immediately after ECS deploy | Normal — tasks need ~90 seconds to pull image, start, and pass 3 health checks. Wait and retry. Check target health with `aws elbv2 describe-target-health`. | 2026-02-28 |
+
+## 2026-07-04 — Grafana Cloud CloudWatch role (observability fabric Phase 1, Part A)
+
+New `modules/grafana-cloud`: cross-account read-only role
+`foundry-dev-grafana-cloudwatch` assumed by Grafana Cloud (account
+`008923505280`) with this stack's External ID (repo Actions secret
+`GRAFANA_CLOUD_EXTERNAL_ID`; account id in Actions variable
+`GRAFANA_CLOUD_ACCOUNT_ID` — both flow into CI as `TF_VAR_*`). Metrics-read +
+resource-discovery only; no logs actions (Axiom/betula owns logs — ADR-0001
+records that alerting stays CloudWatch→SNS). Part B (the `solidago-cloudwatch`
+datasource + Solidago folder + platform-health dashboard) lives in
+`lentago/drosera` and is already applied — its Save & test goes green once
+this role exists. Role is free and stateless; the nightly DR teardown/standup
+recreates it at the same deterministic ARN with no Grafana-side action.

@@ -210,3 +210,8 @@ output "lentago_domain_url" {
   description = "Public HTTPS URL for the promoted Lentago Labs site."
   value       = module.lentago_domain.url
 }
+
+output "grafana_cloudwatch_role_arn" {
+  description = "Role ARN for the Grafana Cloud CloudWatch datasource (consumed by lentago/drosera terraform/datasources.tf)"
+  value       = module.grafana_cloud.role_arn
+}
