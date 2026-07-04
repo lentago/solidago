@@ -215,3 +215,8 @@ output "grafana_cloudwatch_role_arn" {
   description = "Role ARN for the Grafana Cloud CloudWatch datasource (consumed by lentago/drosera terraform/datasources.tf)"
   value       = module.grafana_cloud.role_arn
 }
+
+output "axiom_ingest_secret_arn" {
+  description = "Secret to populate out-of-band with: Authorization Bearer <axiom ingest token> (FireLens -> Axiom)"
+  value       = module.secrets.axiom_ingest_secret_arn
+}

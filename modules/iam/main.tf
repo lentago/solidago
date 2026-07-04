@@ -63,7 +63,12 @@ data "aws_iam_policy_document" "ecs_task_execution_custom" {
       ],
       var.rds_managed_secret_access ? [
         "arn:aws:secretsmanager:${var.aws_region}:${var.aws_account_id}:secret:rds!*",
-      ] : []
+      ] : [],
+      # Additional secrets the execution role may read (e.g. the FireLens ->
+      # Axiom ingest header). Passed as exact ARNs; ":*" suffixes cover
+      # version-id qualifiers, matching the db-credentials pattern above.
+      var.additional_execution_secret_arns,
+      [for arn in var.additional_execution_secret_arns : "${arn}:*"]
     )
   }
 

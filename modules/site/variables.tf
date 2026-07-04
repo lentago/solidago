@@ -156,3 +156,25 @@ variable "log_retention_days" {
   type        = number
   default     = 30
 }
+
+variable "axiom_host" {
+  description = "Axiom API host the FireLens sidecar ships logs to"
+  type        = string
+  default     = "api.axiom.co"
+}
+
+variable "axiom_dataset" {
+  description = "Axiom dataset receiving this site's container logs (betula archive plane)"
+  type        = string
+}
+
+variable "axiom_token_secret_arn" {
+  description = "Secrets Manager ARN holding the Fluent Bit header line (Authorization Bearer <axiom ingest token>) injected into the FireLens output"
+  type        = string
+}
+
+variable "firelens_image" {
+  description = "Image for the FireLens log-router sidecar"
+  type        = string
+  default     = "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable"
+}

@@ -61,13 +61,60 @@ resource "aws_ecs_task_definition" "app" {
         }
       ]
 
-      # Send container stdout/stderr to CloudWatch
+      # Ship container stdout/stderr to Axiom via the FireLens sidecar below
+      # (observability fabric Phase 2 — logs belong to the archive plane,
+      # betula/Axiom, per drosera's contract + ADR-0001; CloudWatch keeps only
+      # the router's own logs). Header (Authorization Bearer <token>) is
+      # injected from Secrets Manager at container start, never in the task
+      # definition JSON.
+      logConfiguration = {
+        logDriver = "awsfirelens"
+        options = {
+          "Name"             = "http"
+          "Host"             = var.axiom_host
+          "Port"             = "443"
+          "URI"              = "/v1/datasets/${var.axiom_dataset}/ingest"
+          "Format"           = "json_lines"
+          "tls"              = "on"
+          "compress"         = "gzip"
+          "json_date_key"    = "_time"
+          "json_date_format" = "iso8601"
+        }
+        secretOptions = [
+          {
+            name      = "header"
+            valueFrom = var.axiom_token_secret_arn
+          }
+        ]
+      }
+    },
+    {
+      # FireLens log router: Fluent Bit sidecar that receives the app
+      # container's stdout/stderr and runs the HTTP output above.
+      # enable-ecs-log-metadata stamps ecs_cluster / ecs_task_arn /
+      # container_name onto every event. essential=true per AWS guidance —
+      # a dead router would otherwise silently drop all logs.
+      name      = "log-router"
+      image     = var.firelens_image
+      essential = true
+
+      firelensConfiguration = {
+        type = "fluentbit"
+        options = {
+          "enable-ecs-log-metadata" = "true"
+        }
+      }
+
+      memoryReservation = 50
+
+      # The router's own diagnostics go to CloudWatch (the one log stream
+      # that must not depend on the router itself).
       logConfiguration = {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.app.name
           "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "ecs"
+          "awslogs-stream-prefix" = "firelens"
         }
       }
     }
