@@ -1,5 +1,7 @@
 # foundry-platform-demo
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/lentago/foundry-platform-demo)
+
 A Terraform-managed AWS environment built as a personal learning lab. It hosts a live application at [icecreamtofightwith.com](https://icecreamtofightwith.com).
 
 **Authorship:** The Terraform, scripts, workflows, and documentation in this repo are co-written with [Claude](https://claude.ai) (Anthropic). I direct the architecture and review the output; Claude writes the code. I'm an infrastructure operator, not a software engineer — please don't read this repo as a portfolio of coding ability.
