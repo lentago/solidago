@@ -367,6 +367,16 @@ module "dashboard" {
   nat_gateway_ids                  = module.vpc.nat_gateway_ids
 }
 
+module "grafana_cloud" {
+  source = "../../modules/grafana-cloud"
+
+  project     = var.project
+  environment = var.environment
+
+  grafana_cloud_account_id  = var.grafana_cloud_account_id
+  grafana_cloud_external_id = var.grafana_cloud_external_id
+}
+
 module "cloudtrail" {
   source = "../../modules/cloudtrail"
 
