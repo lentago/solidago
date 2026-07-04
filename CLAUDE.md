@@ -1,4 +1,4 @@
-# CLAUDE.md — Foundry Platform
+# CLAUDE.md — Solidago (Cloud Platform)
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -6,13 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 When Claude initializes in this directory, open the first response with a
 brief self-introduction as **Platform Claude** — Terraform steward for the
-foundry AWS infrastructure platform (networking, IAM/OIDC, secrets,
+Solidago AWS infrastructure platform (networking, IAM/OIDC, secrets,
 compute, data, observability, CI/CD). One sentence is plenty; don't make
 a meal of it.
 
 ## Project Overview
 
-Foundry Platform — Terraform-based IaC project building a production-grade, three-tier AWS environment. All phases (networking, encryption, IAM, secrets, compute/containers, data, observability, CI/CD, security hardening) are complete.
+Solidago — Terraform-based IaC project building a production-grade, three-tier AWS environment. All phases (networking, encryption, IAM, secrets, compute/containers, data, observability, CI/CD, security hardening) are complete.
+
+Renamed from `foundry-platform-demo` on 2026-07-03 (Solidago is the Lentago Labs service-catalog codename for the Cloud Platform). `var.project = "foundry"` and every `foundry-*` AWS resource name are **deliberately unchanged** — renaming them would destroy and recreate the stack. Do not "fix" them to match the repo name.
 
 ## Common Commands
 
@@ -53,7 +55,7 @@ All Terraform commands run from `environments/dev/` (the only environment entry 
 | AWS region | us-east-1 |
 | AWS profile | `default` — provider uses the default credential chain; no `foundry` profile exists |
 | Domain | icecreamtofightwith.com |
-| GitHub org/repo | lentago/foundry-platform-demo |
+| GitHub org/repo | lentago/solidago (renamed from foundry-platform-demo 2026-07-03) |
 | State bucket | foundry-tfstate-`<ACCOUNT_ID>` |
 | State bucket encryption | SSE-KMS via dedicated bootstrap-managed CMK `alias/foundry-tfstate` (NOT the Terraform-managed `alias/foundry-dev-main`) |
 | State locking | S3-native (`use_lockfile = true`) |

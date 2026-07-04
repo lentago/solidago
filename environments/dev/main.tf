@@ -71,8 +71,8 @@ module "iam" {
   tfstate_kms_key_arn       = data.aws_kms_alias.tfstate.target_key_arn
   db_credentials_secret_arn = module.secrets.db_credentials_secret_arn
   github_org                = "lentago"
-  github_repo               = "foundry-platform-demo" # Terraform pipeline role's OIDC trust
-  app_github_repo           = "ice-cream-book"        # App deploy role's OIDC trust (post-#55 split)
+  github_repo               = "solidago"       # Terraform pipeline role's OIDC trust
+  app_github_repo           = "ice-cream-book" # App deploy role's OIDC trust (post-#55 split)
 
   # Additional workload repos that deploy onto this platform via the same app
   # OIDC role. The Pitzi Labs landing site (pitzilabs-dev) and the Lentago Labs

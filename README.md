@@ -1,6 +1,8 @@
-# foundry-platform-demo
+# solidago
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/lentago/foundry-platform-demo)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/lentago/solidago)
+
+> **Solidago** (goldenrod — from *solidare*, "to make whole") is the Lentago Labs codename for the Cloud Platform service. Renamed from `foundry-platform-demo` on 2026-07-03; AWS resource names keep their `foundry-` prefix.
 
 A Terraform-managed AWS environment built as a personal learning lab. It hosts a live application at [icecreamtofightwith.com](https://icecreamtofightwith.com).
 
@@ -77,7 +79,7 @@ A three-tier web application running on AWS, fully managed by Terraform:
 ## Repository Structure
 
 ```
-foundry-platform-demo/
+solidago/
 ├── environments/
 │   └── dev/
 │       ├── main.tf              # Root module — wires all modules together
