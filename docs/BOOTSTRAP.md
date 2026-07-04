@@ -1,6 +1,6 @@
 # Bootstrap Runbook
 
-This guide walks through deploying the foundry-platform-demo stack from scratch. It covers every manual step required before Terraform can manage the environment autonomously.
+This guide walks through deploying the solidago stack (AWS resources keep the `foundry-` prefix) from scratch. It covers every manual step required before Terraform can manage the environment autonomously.
 
 **Audience:** Engineers evaluating this project, or anyone standing up their own instance of the stack.
 
@@ -136,8 +136,8 @@ State locking uses S3-native locking (`use_lockfile = true`, Terraform 1.10+). N
 ## Step 3: Clone the Repository
 
 ```bash
-git clone https://github.com/lentago/foundry-platform-demo.git
-cd foundry-platform-demo
+git clone https://github.com/lentago/solidago.git
+cd solidago
 ```
 
 ---
@@ -228,7 +228,7 @@ cat > /tmp/terraform-role-trust.json << 'EOF'
       "Condition": {
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:YOUR_ORG/foundry-platform-demo:environment:terraform"
+          "token.actions.githubusercontent.com:sub": "repo:YOUR_ORG/solidago:environment:terraform"
         }
       }
     }
@@ -372,7 +372,7 @@ Merge the PR. The Terraform Apply job should:
 
 ### App deploy pipeline
 
-Push a change to the content source repo (e.g., `ice-cream-book`). The cross-repo dispatch should trigger the app deploy workflow in `foundry-platform-demo`, building and deploying the container to ECS.
+Push a change to a workload repo (e.g., `ice-cream-book`). Its own deploy workflow should assume the `foundry-dev-github-actions` role via OIDC, build the container, push it to ECR, and update the ECS service. Workload deploys run entirely from the workload repo — nothing is dispatched back into this repo.
 
 ---
 
