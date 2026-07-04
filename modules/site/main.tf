@@ -144,12 +144,51 @@ resource "aws_ecs_task_definition" "this" {
         }
       ]
 
+      # Ship container stdout/stderr to Axiom via the FireLens sidecar below
+      # (observability fabric Phase 2 — see the ecs module for the full
+      # rationale; CloudWatch keeps only the router's own logs).
+      logConfiguration = {
+        logDriver = "awsfirelens"
+        options = {
+          "Name"             = "http"
+          "Host"             = var.axiom_host
+          "Port"             = "443"
+          "URI"              = "/v1/datasets/${var.axiom_dataset}/ingest"
+          "Format"           = "json_lines"
+          "tls"              = "on"
+          "compress"         = "gzip"
+          "json_date_key"    = "_time"
+          "json_date_format" = "iso8601"
+        }
+        secretOptions = [
+          {
+            name      = "header"
+            valueFrom = var.axiom_token_secret_arn
+          }
+        ]
+      }
+    },
+    {
+      # FireLens log router (see ecs module for commentary).
+      name      = "log-router"
+      image     = var.firelens_image
+      essential = true
+
+      firelensConfiguration = {
+        type = "fluentbit"
+        options = {
+          "enable-ecs-log-metadata" = "true"
+        }
+      }
+
+      memoryReservation = 50
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.this.name
           "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "ecs"
+          "awslogs-stream-prefix" = "firelens"
         }
       }
     }

@@ -93,6 +93,10 @@ module "iam" {
 
   # Phase 4: grant ECS roles access to RDS-managed secrets
   rds_managed_secret_access = true
+
+  # Observability fabric Phase 2: the execution role reads the FireLens ->
+  # Axiom ingest header at container start.
+  additional_execution_secret_arns = [module.secrets.axiom_ingest_secret_arn]
 }
 module "security_groups" {
   source = "../../modules/security-groups"
@@ -134,6 +138,12 @@ module "alb" {
 }
 module "ecs" {
   source = "../../modules/ecs"
+
+  # Observability fabric Phase 2: container logs -> Axiom via FireLens
+  # (betula archive plane; one shared dataset, services distinguished by the
+  # ecs metadata FireLens stamps on every event).
+  axiom_dataset          = "cjp-solidago-ecs"
+  axiom_token_secret_arn = module.secrets.axiom_ingest_secret_arn
 
   project     = var.project
   environment = var.environment
@@ -178,6 +188,12 @@ module "ecs_autoscaling" {
 module "site_pitzilabs" {
   source = "../../modules/site"
 
+  # Observability fabric Phase 2: container logs -> Axiom via FireLens
+  # (betula archive plane; one shared dataset, services distinguished by the
+  # ecs metadata FireLens stamps on every event).
+  axiom_dataset          = "cjp-solidago-ecs"
+  axiom_token_secret_arn = module.secrets.axiom_ingest_secret_arn
+
   project     = var.project
   environment = var.environment
   name        = "pitzilabs"
@@ -214,6 +230,12 @@ module "site_pitzilabs" {
 # action.
 module "site_lentago" {
   source = "../../modules/site"
+
+  # Observability fabric Phase 2: container logs -> Axiom via FireLens
+  # (betula archive plane; one shared dataset, services distinguished by the
+  # ecs metadata FireLens stamps on every event).
+  axiom_dataset          = "cjp-solidago-ecs"
+  axiom_token_secret_arn = module.secrets.axiom_ingest_secret_arn
 
   project     = var.project
   environment = var.environment

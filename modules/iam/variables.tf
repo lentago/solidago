@@ -65,3 +65,12 @@ variable "additional_app_github_repos" {
   type        = list(string)
   default     = []
 }
+variable "additional_execution_secret_arns" {
+  description = <<-EOT
+    Extra Secrets Manager secret ARNs the ECS task EXECUTION role may read,
+    beyond the database credentials. Used for secrets injected at container
+    start (e.g. the FireLens -> Axiom ingest header). Exact ARNs only.
+  EOT
+  type        = list(string)
+  default     = []
+}

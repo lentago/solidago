@@ -60,3 +60,29 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
     ignore_changes = [secret_string]
   }
 }
+# --- Axiom ingest header (observability fabric Phase 2) ---
+# Holds the Fluent Bit HTTP-output header line FireLens injects when shipping
+# ECS container logs to Axiom (betula's archive plane). The value is set
+# out-of-band (never via Terraform) and MUST be the literal string:
+#   Authorization Bearer <axiom-ingest-token>
+# (space-separated Fluent Bit header syntax — no colon after "Authorization").
+# The token is an Axiom ingest-only token scoped to the cjp-solidago-ecs
+# dataset. Rotation = put a new secret value, then force a new deployment.
+resource "aws_secretsmanager_secret" "axiom_ingest" {
+  name        = "${var.project}-${var.environment}-axiom-ingest-header"
+  description = "Fluent Bit header line for FireLens -> Axiom log shipping (Authorization Bearer <ingest token>)"
+  kms_key_id  = var.kms_key_arn
+
+  tags = {
+    Name = "${var.project}-${var.environment}-axiom-ingest-header"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "axiom_ingest" {
+  secret_id     = aws_secretsmanager_secret.axiom_ingest.id
+  secret_string = "PLACEHOLDER-set-out-of-band"
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
