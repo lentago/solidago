@@ -309,8 +309,12 @@ module "lentago_domain" {
     # DMARC — start in monitor mode (p=none); tighten to quarantine/reject later.
     { name = "_dmarc", type = "TXT", ttl = 300, records = ["v=DMARC1; p=none;"] },
     # GitHub org domain verification for github.com/lentago (proves lentago.dev
-    # ownership → "Verified" badge). Safe to prune once GitHub shows verified.
+    # ownership → "Verified" badge). KEEP — GitHub periodically re-checks; removing
+    # this record un-verifies the domain.
     { name = "_gh-lentago-o", type = "TXT", ttl = 300, records = ["0db43759c9"] },
+    # GitHub Pages custom-domain verification for lentago.dev (guards against
+    # domain takeover on Pages). KEEP — same periodic re-check as the org record.
+    { name = "_github-pages-challenge-lentago", type = "TXT", ttl = 300, records = ["9eee8470d3efb8d9b52199a9874d03"] },
   ]
 }
 
