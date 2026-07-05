@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================================
 # setup-crostini-lab.sh — v4 (field-tested on real Chromebook hardware)
-# Chromebook Crostini (Debian) bootstrap for ops/dev homelab work
+# Chromebook Crostini (Debian) bootstrap for ops/dev Lentago lab work
 #
 # Author:  Chris Pitzi (cpitzi)
 # Updated: 2026-03-17

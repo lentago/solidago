@@ -20,7 +20,7 @@ metrics.
 
 ## Consequences
 
-- **Blast radius:** alerting survives failures of the homelab LXC, the
+- **Blast radius:** alerting survives failures of the Lentago lab LXC, the
   Grafana Cloud free tier, and the datasource's IAM trust. The failure
   domain of "we can't see" never overlaps the failure domain of "we can't
   be paged."
