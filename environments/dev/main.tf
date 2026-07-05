@@ -308,6 +308,9 @@ module "lentago_domain" {
     { name = "fm3._domainkey", type = "CNAME", ttl = 300, records = ["fm3.lentago.dev.dkim.fmhosted.com"] },
     # DMARC — start in monitor mode (p=none); tighten to quarantine/reject later.
     { name = "_dmarc", type = "TXT", ttl = 300, records = ["v=DMARC1; p=none;"] },
+    # GitHub org domain verification for github.com/lentago (proves lentago.dev
+    # ownership → "Verified" badge). Safe to prune once GitHub shows verified.
+    { name = "_gh-lentago-o", type = "TXT", ttl = 300, records = ["0db43759c9"] },
   ]
 }
 
