@@ -3,7 +3,10 @@
 # Terraform Infrastructure Pipeline
 #
 # Triggers:
-#   1. Pull request that changes .tf/.tfvars files or this workflow → plan
+#   1. Pull request → the `changes` job detects .tf/.tfvars edits; if present,
+#      Terraform Plan runs. A docs-only PR skips the plan (which counts as a
+#      passing required check) so the `gate` job below can be required without
+#      deadlocking. See lentago/.github#27.
 #   2. Push to main that changes .tf/.tfvars files or this workflow → apply
 #
 # Authenticates via OIDC using the terraform-specific IAM role.
@@ -12,6 +15,8 @@
 name: Terraform
 
 on:
+  # PR trigger is intentionally NOT path-filtered so the required `gate` check
+  # always reports; the .tf/.tfvars filter lives in the `changes` job instead.
   pull_request:
   push:
     branches:
@@ -27,9 +32,37 @@ permissions:
   pull-requests: write
 
 jobs:
+  # Did this PR touch terraform sources? Gates the plan so a docs-only PR skips
+  # it (skipped → the required `gate` check still reports green) and doesn't run
+  # a pointless full AWS plan. Non-PR events always count as changed.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      tf: ${{ steps.filter.outputs.tf }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Detect terraform changes
+        id: filter
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "tf=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          changed=$(git diff --name-only "$BASE_SHA" HEAD)
+          echo "changed files:"; echo "$changed"
+          if echo "$changed" | grep -qE '\.tf$|\.tfvars$|^\.github/workflows/terraform\.yml$'; then
+            echo "tf=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tf=false" >> "$GITHUB_OUTPUT"
+          fi
+
   plan:
     name: Terraform Plan
-    if: github.event_name == 'pull_request'
+    needs: changes
+    if: needs.changes.outputs.tf == 'true' && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     environment: terraform
     # Hidden Pitzi Labs preview host is supplied from the repo Actions
@@ -131,3 +164,24 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve -no-color -input=false -lock-timeout=120s
+
+  # Single required status check for the terraform pipeline. Runs on every PR
+  # (if: always()) so the ruleset can require exactly `gate`: it reports green
+  # when Terraform Plan succeeded OR was skipped (docs-only PR), and red when it
+  # failed — so a bad plan blocks the merge, and therefore the apply.
+  gate:
+    needs: [changes, plan]
+    if: ${{ always() && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Terraform gate
+        run: |
+          echo "changes=${{ needs.changes.result }} plan=${{ needs.plan.result }}"
+          for r in "${{ needs.changes.result }}" "${{ needs.plan.result }}"; do
+            case "$r" in
+              failure|cancelled)
+                echo "::error::terraform gate blocked (a required job reported $r)"
+                exit 1 ;;
+            esac
+          done
+          echo "gate passed (success/skipped only)"
