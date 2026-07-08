@@ -20,7 +20,7 @@ variable "environment" {
 }
 
 variable "name" {
-  description = "Short site name, appended to the {project}-{environment} prefix (e.g. \"pitzilabs\" -> foundry-dev-pitzilabs)"
+  description = "Short site name, appended to the {project}-{environment} prefix (e.g. \"pitzilabs\" -> solidago-dev-pitzilabs)"
   type        = string
 }
 

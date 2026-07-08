@@ -27,7 +27,7 @@ aws s3api put-bucket-versioning \
 # ---------------------------------------------------------------------------
 # Dedicated customer-managed KMS key (CMK) for the Terraform state bucket.
 #
-# This is a SEPARATE key from the Terraform-managed CMK (alias/foundry-dev-main
+# This is a SEPARATE key from the Terraform-managed CMK (alias/solidago-dev-main
 # in modules/kms). That separation is deliberate:
 #   1. Chicken-and-egg — the state bucket must exist and be encryptable BEFORE
 #      Terraform can run, so its key can't be a Terraform-managed resource.

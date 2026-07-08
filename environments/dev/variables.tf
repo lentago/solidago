@@ -6,7 +6,7 @@ variable "aws_region" {
 variable "project" {
   description = "Project name"
   type        = string
-  default     = "foundry"
+  default     = "solidago"
 }
 
 variable "environment" {

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# teardown.sh — selective, cost-saving teardown of the foundry-dev platform.
+# teardown.sh — selective, cost-saving teardown of the solidago-dev platform.
 #
 # Destroys ONLY the expensive, always-on resources that are cheap and fast to
 # recreate, while leaving the durable foundation intact. Pair with standup.sh
@@ -23,7 +23,7 @@ set -euo pipefail
 #   - IAM roles / OIDC provider         (module.iam)
 #   - ECR repositories + images         (module.ecr, module.site_*'s ECR repos)
 #   - Route 53 hosted zone + ACM cert   (module.dns zone/cert; NS delegation)
-#   - Terraform-managed KMS key         (module.kms, alias/foundry-dev-main)
+#   - Terraform-managed KMS key         (module.kms, alias/solidago-dev-main)
 #   - Secrets Manager secrets           (module.secrets)
 #   - Security groups, VPC core, CloudWatch log groups
 #
@@ -54,7 +54,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_DIR="${REPO_ROOT}/environments/dev"
 
-PROJECT="foundry"
+PROJECT="solidago"
 ENVIRONMENT="dev"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 RDS_MODE="${RDS_MODE:-stop}"

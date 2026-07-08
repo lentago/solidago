@@ -7,7 +7,7 @@
 Phase 1 of the Lentago observability fabric connects Solidago platform
 metrics to the `lentago.grafana.net` stack (managed from `lentago/drosera`)
 via a query-on-demand CloudWatch datasource assuming the read-only
-`foundry-dev-grafana-cloudwatch` role. With platform metrics now rendering
+`solidago-dev-grafana-cloudwatch` role. With platform metrics now rendering
 in Grafana Cloud, the question arises whether alerting should move there
 too.
 

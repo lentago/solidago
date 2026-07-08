@@ -1,6 +1,6 @@
 # Teardown / Standup Runbook
 
-Selective, cost-saving teardown of the foundry-dev platform and how to bring it
+Selective, cost-saving teardown of the solidago-dev platform and how to bring it
 back. The goal: destroy the expensive always-on resources when the lab is idle,
 **without** destroying the durable foundation, so a rebuild takes minutes instead
 of the 15–20 minute (and occasionally ~75 minute) resurrection pain of a full
@@ -74,7 +74,7 @@ resources *to add* — that is the cascade set waiting to be rebuilt by standup.
 | IAM roles / OIDC provider | `module.iam` | Free; recreating churns trust relationships |
 | ECR repositories + images | `module.ecr`, plus the ECR repos inside `module.site_*` | **Deleting them empties the registries → all sites 503** until re-pushed |
 | Route 53 hosted zone + ACM cert | `module.dns` (zone + certificate) | Recreating changes nameservers → forces registrar re-delegation + ~75 min ACM hang |
-| Terraform-managed KMS key | `module.kms` (`alias/foundry-dev-main`) | 30-day recovery window; also entangled with the RDS/secret re-key trap |
+| Terraform-managed KMS key | `module.kms` (`alias/solidago-dev-main`) | 30-day recovery window; also entangled with the RDS/secret re-key trap |
 | Secrets Manager secrets | `module.secrets` | 7-day recovery window |
 | Security groups, VPC core, CloudWatch log groups | `module.security_groups`, `module.vpc` (subnets/IGW/public route table), log groups in `module.ecs` etc. | Free and/or hold history |
 
@@ -83,7 +83,7 @@ resources *to add* — that is the cascade set waiting to be rebuilt by standup.
 > and are not managed by any module, so no `terraform destroy` can reach them —
 > neither script references them. If either is lost, you lose access to your own
 > state. See [BOOTSTRAP.md](BOOTSTRAP.md) for why the state key is deliberately
-> separate from the Terraform-managed `alias/foundry-dev-main` key.
+> separate from the Terraform-managed `alias/solidago-dev-main` key.
 
 ---
 

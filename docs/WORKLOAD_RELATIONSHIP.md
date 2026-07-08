@@ -8,11 +8,11 @@ Before the platform/workload split (issue #55), the application source lived und
 
 | Resource | Module | Purpose |
 |---|---|---|
-| ECR repository (`foundry-dev-app`) | `modules/ecr` | Image storage |
-| ECS cluster (`foundry-dev-cluster`) + service (`foundry-dev-app`) | `modules/ecs` | Where the container runs |
+| ECR repository (`solidago-dev-app`) | `modules/ecr` | Image storage |
+| ECS cluster (`solidago-dev-cluster`) + service (`solidago-dev-app`) | `modules/ecs` | Where the container runs |
 | ALB + listener rules | `modules/alb` | HTTPS termination, target group health checks against `/health:8080` |
 | Route 53 zone + ACM certificate | `modules/dns` | DNS, TLS |
-| IAM role `foundry-dev-github-actions` | `modules/iam` | OIDC-trusted role the workload assumes for ECR push / ECS update |
+| IAM role `solidago-dev-github-actions` | `modules/iam` | OIDC-trusted role the workload assumes for ECR push / ECS update |
 | KMS, Secrets Manager, RDS, ElastiCache, WAF, monitoring | `modules/*` | Available to any workload that needs them |
 
 The platform does **not** know what the workload is. It exposes primitives; the workload decides what to put in them.
@@ -21,8 +21,8 @@ The platform does **not** know what the workload is. It exposes primitives; the 
 
 There are two GitHub Actions IAM roles in `modules/iam`:
 
-- **`foundry-dev-github-actions`** — assumed by workload repos to deploy. Trust policy: `repo:lentago/${var.app_github_repo}:*`. Currently set to `ice-cream-book`.
-- **`foundry-dev-github-actions-terraform`** — assumed by this repo's `terraform` GitHub environment. Trust policy: `repo:lentago/${var.github_repo}:environment:terraform`. Plans and applies infrastructure.
+- **`solidago-dev-github-actions`** — assumed by workload repos to deploy. Trust policy: `repo:lentago/${var.app_github_repo}:*`. Currently set to `ice-cream-book`.
+- **`solidago-dev-github-actions-terraform`** — assumed by this repo's `terraform` GitHub environment. Trust policy: `repo:lentago/${var.github_repo}:environment:terraform`. Plans and applies infrastructure.
 
 Neither role can do the other's job. A compromised workload deploy can't mutate infrastructure; a compromised infrastructure pipeline can't push arbitrary container images without going through Terraform.
 
@@ -34,10 +34,10 @@ From the workload repo's `.github/workflows/deploy.yml`:
 
 1. Checkout the workload repo
 2. Build the application (e.g., `npm ci` + `astro build`)
-3. Authenticate via OIDC: GitHub JWT → STS → temporary credentials for `foundry-dev-github-actions`
+3. Authenticate via OIDC: GitHub JWT → STS → temporary credentials for `solidago-dev-github-actions`
 4. Login to ECR
-5. `docker build` + `docker push` to `foundry-dev-app`, tagged `:latest` and `:<commit-sha>`
-6. `aws ecs update-service --force-new-deployment` against `foundry-dev-cluster / foundry-dev-app`
+5. `docker build` + `docker push` to `solidago-dev-app`, tagged `:latest` and `:<commit-sha>`
+6. `aws ecs update-service --force-new-deployment` against `solidago-dev-cluster / solidago-dev-app`
 7. `aws ecs wait services-stable`
 
 No stored AWS credentials in GitHub Secrets. The trust policy ensures only the configured workload repo can complete step 3.
@@ -46,7 +46,7 @@ No stored AWS credentials in GitHub Secrets. The trust policy ensures only the c
 
 To add a second workload (e.g., `lentago.dev`):
 
-1. Decide the IAM model: share `foundry-dev-github-actions` (simpler, requires re-pointing the trust policy if only one workload is live at a time) or add a second role (more isolated, more Terraform churn).
+1. Decide the IAM model: share `solidago-dev-github-actions` (simpler, requires re-pointing the trust policy if only one workload is live at a time) or add a second role (more isolated, more Terraform churn).
 2. If sharing: update `app_github_repo` — but this changes which repo can deploy. Multi-workload sharing isn't supported by a single trust `repo:` clause; for two concurrent workloads add a second IAM role with its own trust pattern.
 3. Add a second ECR repo, ECS service, target group, and listener rule. Most existing modules accept a `project`/`environment` prefix, so a second instance with a different prefix is the pattern.
 4. The new workload repo writes its own deploy workflow following the same OIDC pattern as ice-cream-book's.
@@ -60,17 +60,17 @@ Even with deploys automated, you'll sometimes want to inspect ECR/ECS state from
 ```bash
 # What images are in ECR
 aws ecr describe-images \
-  --repository-name foundry-dev-app \
+  --repository-name solidago-dev-app \
   --query 'sort_by(imageDetails, &imagePushedAt)[-5:].[imageTags, imagePushedAt]'
 
 # What's currently deployed
 aws ecs describe-services \
-  --cluster foundry-dev-cluster \
-  --services foundry-dev-app \
+  --cluster solidago-dev-cluster \
+  --services solidago-dev-app \
   --query 'services[0].deployments'
 
 # Container logs
-aws logs tail /ecs/foundry-dev-app --follow
+aws logs tail /ecs/solidago-dev-app --follow
 ```
 
 (Add `--profile foundry` if your default AWS profile is on a different account.)
