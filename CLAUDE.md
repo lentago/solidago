@@ -14,7 +14,7 @@ a meal of it.
 
 Solidago — Terraform-based IaC project building a production-grade, three-tier AWS environment. All phases (networking, encryption, IAM, secrets, compute/containers, data, observability, CI/CD, security hardening) are complete.
 
-Renamed from `foundry-platform-demo` on 2026-07-03 (Solidago is the Lentago Labs service-catalog codename for the Cloud Platform). `var.project = "foundry"` and every `foundry-*` AWS resource name are **deliberately unchanged** — renaming them would destroy and recreate the stack. Do not "fix" them to match the repo name.
+Renamed from `foundry-platform-demo` on 2026-07-03 (Solidago is the Lentago Labs service-catalog codename for the Cloud Platform). The AWS resource names were aligned to the `solidago` codename on 2026-07-07 (`var.project = "solidago"`; issue #102), landing ahead of a clean rebuild. The Terraform state backend (S3 bucket + KMS CMK, still `foundry-tfstate*`) is excepted — its rename is a separate cross-repo migration tracked in issue #103.
 
 ## Common Commands
 
@@ -57,7 +57,7 @@ All Terraform commands run from `environments/dev/` (the only environment entry 
 | Domain | icecreamtofightwith.com (primary app); lentago.dev (landing site via `modules/apex-domain`) |
 | GitHub org/repo | lentago/solidago (renamed from foundry-platform-demo 2026-07-03) |
 | State bucket | foundry-tfstate-`<ACCOUNT_ID>` |
-| State bucket encryption | SSE-KMS via dedicated bootstrap-managed CMK `alias/foundry-tfstate` (NOT the Terraform-managed `alias/foundry-dev-main`) |
+| State bucket encryption | SSE-KMS via dedicated bootstrap-managed CMK `alias/foundry-tfstate` (NOT the Terraform-managed `alias/solidago-dev-main`) |
 | State locking | S3-native (`use_lockfile = true`) |
 | AZs | us-east-1a, us-east-1b |
 
@@ -92,7 +92,7 @@ DNS ←──→ ALB (certificate ↔ alias record)
 
 ## Architecture Conventions
 
-**Naming**: `{project}-{environment}-{resource-type}` (e.g., `foundry-dev-ecs-cluster`).
+**Naming**: `{project}-{environment}-{resource-type}` (e.g., `solidago-dev-ecs-cluster`).
 
 **Resource labels**: Terraform resource labels use `this` (e.g., `aws_vpc.this`), not `main` — standardized fleet-wide in #82. Multi-instance resources use descriptive labels (`public`, `app`, `data`).
 
@@ -125,7 +125,7 @@ PR workflow + auto-merge arming protocol is fleet-wide; see `~/repos/CLAUDE.md`.
 - `environments/dev/outputs.tf` — what each module exposes
 - `environments/dev/backend.tf` — remote state configuration (S3 backend, S3-native locking, SSE-KMS via the bootstrap-managed `alias/foundry-tfstate` CMK)
 - `modules/*/variables.tf` — what each module accepts
-- `modules/iam/main.tf` — OIDC roles. `foundry-dev-github-actions` (trusts the workload repo `site-icecreamtofightwith-com`, née `ice-cream-book`, via `var.app_github_repo` + `additional_app_github_repos` — old names dual-trusted during the 2026-07-04 site-repo rename transition) deploys containers and updates ECS; `foundry-dev-github-actions-terraform` (trusts this repo's `terraform` environment) runs the Terraform pipeline. The split keeps platform mutations and workload deploys on separate credentials.
+- `modules/iam/main.tf` — OIDC roles. `solidago-dev-github-actions` (trusts the workload repo `site-icecreamtofightwith-com`, née `ice-cream-book`, via `var.app_github_repo` + `additional_app_github_repos` — old names dual-trusted during the 2026-07-04 site-repo rename transition) deploys containers and updates ECS; `solidago-dev-github-actions-terraform` (trusts this repo's `terraform` environment) runs the Terraform pipeline. The split keeps platform mutations and workload deploys on separate credentials.
 
 ## Project Phases
 

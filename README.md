@@ -2,7 +2,7 @@
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/lentago/solidago)
 
-> **Solidago** (goldenrod — from *solidare*, "to make whole") is the Lentago Labs codename for the Cloud Platform service. Renamed from `foundry-platform-demo` on 2026-07-03; AWS resource names keep their `foundry-` prefix.
+> **Solidago** (goldenrod — from *solidare*, "to make whole") is the Lentago Labs codename for the Cloud Platform service. Renamed from `foundry-platform-demo` on 2026-07-03; AWS resource names were aligned to the `solidago` codename on 2026-07-07 (issue #102), except the Terraform state backend (still `foundry-tfstate*`, tracked separately in issue #103).
 
 A Terraform-managed AWS environment built as a personal learning lab. It hosts a live application at [icecreamtofightwith.com](https://icecreamtofightwith.com).
 
@@ -32,7 +32,7 @@ A three-tier web application running on AWS, fully managed by Terraform:
 
 **CI/CD:** This repo runs one Terraform pipeline; workload deploys run from their own repos.
 - **Terraform** — plans on PR (with plan output posted as a PR comment), applies on merge to main. IAM role scoped to the `terraform` GitHub environment via OIDC sub-claim, so only this workflow can mutate infrastructure.
-- **Workload deploys** — each workload builds and deploys from its own repository, assuming the platform-owned `foundry-dev-github-actions` IAM role via OIDC. The role's trust policy lists the workload repos ([site-icecreamtofightwith-com](https://github.com/lentago/site-icecreamtofightwith-com) plus the platform-hosted landing sites), so only those repos' workflows can push to ECR and update ECS.
+- **Workload deploys** — each workload builds and deploys from its own repository, assuming the platform-owned `solidago-dev-github-actions` IAM role via OIDC. The role's trust policy lists the workload repos ([site-icecreamtofightwith-com](https://github.com/lentago/site-icecreamtofightwith-com) plus the platform-hosted landing sites), so only those repos' workflows can push to ECR and update ECS.
 
 ## Architecture
 

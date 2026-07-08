@@ -1,6 +1,6 @@
 # Bootstrap Runbook
 
-This guide walks through deploying the solidago stack (AWS resources keep the `foundry-` prefix) from scratch. It covers every manual step required before Terraform can manage the environment autonomously.
+This guide walks through deploying the solidago stack (AWS resources use the `solidago-` prefix; the Terraform state backend keeps its `foundry-tfstate*` names, tracked separately in issue #103) from scratch. It covers every manual step required before Terraform can manage the environment autonomously.
 
 **Audience:** Engineers evaluating this project, or anyone standing up their own instance of the stack.
 
@@ -114,7 +114,7 @@ aws s3api put-public-access-block \
 
 State locking uses S3-native locking (`use_lockfile = true`, Terraform 1.10+). No DynamoDB table is needed.
 
-> **Why a dedicated state CMK (`alias/foundry-tfstate`), not the Terraform-managed `alias/foundry-dev-main`?**
+> **Why a dedicated state CMK (`alias/foundry-tfstate`), not the Terraform-managed `alias/solidago-dev-main`?**
 > The state bucket is bootstrapped *outside* Terraform (chicken-and-egg), so its
 > key can't be a Terraform resource. Reusing the Terraform-managed key would be
 > a circular dependency — that key is *defined in* the state stored in this
@@ -151,7 +151,7 @@ cat environments/dev/terraform.tfvars
 ```
 
 At minimum, update:
-- `project` — your project name (default: `foundry`)
+- `project` — your project name (default: `solidago`)
 - `environment` — environment name (default: `dev`)
 - `domain_name` — your registered domain
 - Any resource sizing (RDS instance class, ElastiCache node type, etc.)
@@ -289,17 +289,17 @@ EOF
 
 ```bash
 aws iam create-role \
-  --role-name foundry-dev-github-actions-terraform \
+  --role-name solidago-dev-github-actions-terraform \
   --assume-role-policy-document file:///tmp/terraform-role-trust.json
 
 aws iam create-policy \
-  --policy-name foundry-dev-github-actions-terraform \
+  --policy-name solidago-dev-github-actions-terraform \
   --policy-document file:///tmp/terraform-role-policy.json
 
 # Use the policy ARN from the create-policy output
 aws iam attach-role-policy \
-  --role-name foundry-dev-github-actions-terraform \
-  --policy-arn "arn:aws:iam::YOUR_ACCOUNT_ID:policy/foundry-dev-github-actions-terraform"
+  --role-name solidago-dev-github-actions-terraform \
+  --policy-arn "arn:aws:iam::YOUR_ACCOUNT_ID:policy/solidago-dev-github-actions-terraform"
 ```
 
 ### 7d. Import into Terraform
@@ -309,15 +309,15 @@ cd environments/dev
 
 terraform import \
   module.iam.aws_iam_role.github_actions_terraform \
-  foundry-dev-github-actions-terraform
+  solidago-dev-github-actions-terraform
 
 terraform import \
   module.iam.aws_iam_policy.github_actions_terraform \
-  "arn:aws:iam::YOUR_ACCOUNT_ID:policy/foundry-dev-github-actions-terraform"
+  "arn:aws:iam::YOUR_ACCOUNT_ID:policy/solidago-dev-github-actions-terraform"
 
 terraform import \
   module.iam.aws_iam_role_policy_attachment.github_actions_terraform \
-  "foundry-dev-github-actions-terraform/arn:aws:iam::YOUR_ACCOUNT_ID:policy/foundry-dev-github-actions-terraform"
+  "solidago-dev-github-actions-terraform/arn:aws:iam::YOUR_ACCOUNT_ID:policy/solidago-dev-github-actions-terraform"
 ```
 
 Verify the import is clean:
@@ -372,7 +372,7 @@ Merge the PR. The Terraform Apply job should:
 
 ### App deploy pipeline
 
-Push a change to a workload repo (e.g., `site-icecreamtofightwith-com`). Its own deploy workflow should assume the `foundry-dev-github-actions` role via OIDC, build the container, push it to ECR, and update the ECS service. Workload deploys run entirely from the workload repo — nothing is dispatched back into this repo.
+Push a change to a workload repo (e.g., `site-icecreamtofightwith-com`). Its own deploy workflow should assume the `solidago-dev-github-actions` role via OIDC, build the container, push it to ECR, and update the ECS service. Workload deploys run entirely from the workload repo — nothing is dispatched back into this repo.
 
 ---
 

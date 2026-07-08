@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# standup.sh — bring the foundry-dev platform back after a selective teardown.
+# standup.sh — bring the solidago-dev platform back after a selective teardown.
 #
 # Reverses scripts/teardown.sh: starts the RDS instance (if it was stopped) and
 # runs a FULL `terraform apply` to reconcile every ephemeral resource — and the
@@ -40,7 +40,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_DIR="${REPO_ROOT}/environments/dev"
 
-PROJECT="foundry"
+PROJECT="solidago"
 ENVIRONMENT="dev"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 RDS_IDENTIFIER="${PROJECT}-${ENVIRONMENT}-postgres"

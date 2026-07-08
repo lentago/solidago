@@ -26,7 +26,7 @@
 |------|-------|
 | State bucket name | foundry-tfstate-`<ACCOUNT_ID>` |
 | State bucket region | us-east-1 |
-| State bucket encryption | SSE-KMS via dedicated bootstrap-managed CMK `alias/foundry-tfstate` (separate from the Terraform-managed `alias/foundry-dev-main`) |
+| State bucket encryption | SSE-KMS via dedicated bootstrap-managed CMK `alias/foundry-tfstate` (separate from the Terraform-managed `alias/solidago-dev-main`) |
 | State locking | S3-native (`use_lockfile = true`, Terraform 1.10+) |
 | State file key | env/dev/terraform.tfstate |
 
@@ -55,14 +55,14 @@
 
 | Item | Value |
 |------|-------|
-| KMS key alias | alias/foundry-dev-main |
+| KMS key alias | alias/solidago-dev-main |
 | KMS key ID | 366ef9e5-645c-4755-9ad6-4b2ea322af9e |
 | KMS key ARN | arn:aws:kms:us-east-1:`<ACCOUNT_ID>`:key/`<KEY_ID>` |
-| ECS task execution role | arn:aws:iam::`<ACCOUNT_ID>`:role/foundry-dev-ecs-task-execution |
-| ECS task role | arn:aws:iam::`<ACCOUNT_ID>`:role/foundry-dev-ecs-task |
-| GitHub Actions OIDC role | arn:aws:iam::`<ACCOUNT_ID>`:role/foundry-dev-github-actions |
-| Secrets Manager secret name | foundry-dev/db-credentials |
-| Secrets Manager secret ARN | arn:aws:secretsmanager:us-east-1:`<ACCOUNT_ID>`:secret:foundry-dev/db-credentials-`<SUFFIX>` |
+| ECS task execution role | arn:aws:iam::`<ACCOUNT_ID>`:role/solidago-dev-ecs-task-execution |
+| ECS task role | arn:aws:iam::`<ACCOUNT_ID>`:role/solidago-dev-ecs-task |
+| GitHub Actions OIDC role | arn:aws:iam::`<ACCOUNT_ID>`:role/solidago-dev-github-actions |
+| Secrets Manager secret name | solidago-dev/db-credentials |
+| Secrets Manager secret ARN | arn:aws:secretsmanager:us-east-1:`<ACCOUNT_ID>`:secret:solidago-dev/db-credentials-`<SUFFIX>` |
 | ALB security group | sg-09d6b29de9879301c |
 | App security group | sg-0e31af3dc8ce08f3a |
 | RDS security group | sg-08a72bc492fa4fea0 |
@@ -74,26 +74,26 @@
 
 | Item | Value |
 |------|-------|
-| ECR repo name | foundry-dev-app |
-| ECR repo URI | `<ACCOUNT_ID>`.dkr.ecr.us-east-1.amazonaws.com/foundry-dev-app |
-| ECS cluster name | foundry-dev-cluster |
-| ECS service name | foundry-dev-app |
-| ECS task definition family | foundry-dev-app |
+| ECR repo name | solidago-dev-app |
+| ECR repo URI | `<ACCOUNT_ID>`.dkr.ecr.us-east-1.amazonaws.com/solidago-dev-app |
+| ECS cluster name | solidago-dev-cluster |
+| ECS service name | solidago-dev-app |
+| ECS task definition family | solidago-dev-app |
 | ECS task CPU / Memory | 256 / 512 (0.25 vCPU, 512 MiB) |
 | ECS desired count | 2 (one per AZ) |
 | Container port | 8080 |
 | Container image | nginx:latest (custom config for port 8080) |
-| ALB name | foundry-dev-alb |
-| ALB DNS name | foundry-dev-alb-1683080614.us-east-1.elb.amazonaws.com |
+| ALB name | solidago-dev-alb |
+| ALB DNS name | solidago-dev-alb-1683080614.us-east-1.elb.amazonaws.com |
 | ALB security group | sg-01efcdea06926db65 |
-| Target group name | foundry-dev-app-tg |
-| Target group ARN | arn:aws:elasticloadbalancing:us-east-1:`<ACCOUNT_ID>`:targetgroup/foundry-dev-app-tg/`<TG_ID>` |
+| Target group name | solidago-dev-app-tg |
+| Target group ARN | arn:aws:elasticloadbalancing:us-east-1:`<ACCOUNT_ID>`:targetgroup/solidago-dev-app-tg/`<TG_ID>` |
 | ACM certificate ARN | arn:aws:acm:us-east-1:`<ACCOUNT_ID>`:certificate/`<CERT_ID>` |
 | Route 53 hosted zone ID | Captured from `terraform output route53_zone_id` after first apply. Locked by `prevent_destroy`. |
 | Route 53 nameservers | Captured from `terraform output route53_name_servers` after first apply. Authoritative — `prevent_destroy` on the zone keeps these stable across teardown cycles. |
 | Domain name | icecreamtofightwith.com |
 | Domain registrar | Squarespace (nameservers delegated to Route 53). Transfer to Route 53 Domains planned — see [issue #48](https://github.com/lentago/solidago/issues/48) and `docs/REGISTRAR_TRANSFER.md`. |
-| CloudWatch log group | /ecs/foundry-dev-app |
+| CloudWatch log group | /ecs/solidago-dev-app |
 | ECS auto-scaling | Not yet configured (Phase 3d) |
 
 ---
@@ -102,9 +102,9 @@
 
 | Item | Value |
 |------|-------|
-| RDS instance identifier | foundry-dev-postgres |
-| RDS endpoint | foundry-dev-postgres.c458aku0mtw1.us-east-1.rds.amazonaws.com:5432 |
-| RDS address (hostname only) | foundry-dev-postgres.c458aku0mtw1.us-east-1.rds.amazonaws.com |
+| RDS instance identifier | solidago-dev-postgres |
+| RDS endpoint | solidago-dev-postgres.c458aku0mtw1.us-east-1.rds.amazonaws.com:5432 |
+| RDS address (hostname only) | solidago-dev-postgres.c458aku0mtw1.us-east-1.rds.amazonaws.com |
 | RDS port | 5432 |
 | RDS engine | PostgreSQL 16 (db.t4g.micro Graviton) |
 | RDS storage | 20 GiB gp3, autoscale to 100 GiB |
@@ -114,8 +114,8 @@
 | RDS master secret ARN | arn:aws:secretsmanager:us-east-1:`<ACCOUNT_ID>`:secret:rds!db-`<SECRET_SUFFIX>` |
 | RDS master secret rotation | Automatic, every 7 days (RDS-managed) |
 | RDS security group | sg-0e62923842c97d48b |
-| DB subnet group | foundry-dev-db-subnet-group |
-| Parameter group | foundry-dev-pg16 |
+| DB subnet group | solidago-dev-db-subnet-group |
+| Parameter group | solidago-dev-pg16 |
 | Performance Insights | Enabled (7-day retention, KMS encrypted) |
 | Backup retention | 7 days |
 | Backup window | 03:00–04:00 UTC |
@@ -130,15 +130,15 @@
 
 | Item | Value |
 |------|-------|
-| SNS topic name | foundry-dev-alerts |
-| SNS topic ARN | arn:aws:sns:us-east-1:`<ACCOUNT_ID>`:foundry-dev-alerts |
+| SNS topic name | solidago-dev-alerts |
+| SNS topic ARN | arn:aws:sns:us-east-1:`<ACCOUNT_ID>`:solidago-dev-alerts |
 | Notification email | cpitzi@gmail.com |
 | Email subscription confirmed | Yes (2026-03-19) |
 | CloudWatch alarms (8 total) | ecs-cpu-high, ecs-memory-high, alb-5xx-high, alb-response-slow, rds-cpu-high, rds-storage-low, cache-cpu-high, cache-memory-high |
-| Alarm naming pattern | foundry-dev-{service}-{metric} |
-| CloudTrail trail name | foundry-dev-trail |
+| Alarm naming pattern | solidago-dev-{service}-{metric} |
+| CloudTrail trail name | solidago-dev-trail |
 | CloudTrail S3 prefix | cloudtrail |
-| CloudTrail S3 path | s3://foundry-dev-`<ACCOUNT_ID>`/cloudtrail/AWSLogs/`<ACCOUNT_ID>`/ |
+| CloudTrail S3 path | s3://solidago-dev-`<ACCOUNT_ID>`/cloudtrail/AWSLogs/`<ACCOUNT_ID>`/ |
 | CloudTrail multi-region | Yes |
 | CloudTrail log file validation | Yes |
 | CloudTrail encryption | KMS (CMK) |
@@ -181,7 +181,7 @@ _Quick-reference for architectural decisions made along the way. Full ADRs live 
 | 16 | Custom nginx image for port 8080 | Stock nginx listens on 80; security groups and ALB target group expect 8080. Custom Dockerfile + nginx.conf aligns the port contract across all modules. | 2026-02-28 |
 | 17 | Fargate target_type = "ip" | Required for Fargate. Each task gets its own ENI with a private IP; ALB routes directly to task IPs rather than EC2 instance IDs. | 2026-02-28 |
 | 18 | icecreamtofightwith.com full domain delegation to Route 53 | Simpler than subdomain delegation. NS records updated at Squarespace to point to Route 53. | 2026-02-28 |
-| 19 | RDS-managed master password over traditional Secrets Manager | Auto-rotation every 7 days, no password in Terraform state. Existing Phase 2 secret (foundry-dev/db-credentials) retained but unused by RDS. | 2026-03-19 |
+| 19 | RDS-managed master password over traditional Secrets Manager | Auto-rotation every 7 days, no password in Terraform state. Existing Phase 2 secret (solidago-dev/db-credentials) retained but unused by RDS. | 2026-03-19 |
 | 20 | db.t4g.micro (Graviton) over db.t3.micro | Same price tier, ~20% better price-performance on ARM. Signals awareness of Graviton ecosystem. | 2026-03-19 |
 | 21 | PostgreSQL 16 major-only version pin | Lets AWS pick latest minor version. Avoids breakage when AWS retires specific minor versions. | 2026-03-19 |
 | 22 | gp3 storage over gp2 | Baseline 3,000 IOPS + 125 MiB/s included free. gp2 at 20 GiB would only get ~100 IOPS. | 2026-03-19 |
@@ -197,7 +197,7 @@ _Quick-reference for architectural decisions made along the way. Full ADRs live 
 | 32 | Management events only (no data events) | Data events (S3 object ops, Lambda invocations) would generate massive volume and cost for a lab. Management events cover the resource-level audit questions. | 2026-03-19 |
 | 33 | S3 bucket policy owned by CloudTrail module (not S3 module) | Keeps the S3 module general-purpose. The consumer (CloudTrail) manages its own access. If AWS Config also needs bucket access, we'll consolidate into a shared policy. | 2026-03-19 |
 | 34 | EncryptionContext condition (not aws:SourceArn) on KMS key policy | Avoids circular dependency: trail needs key ARN, and SourceArn condition would need trail ARN. EncryptionContext scoped to account is sufficient for single-account use. | 2026-03-19 |
-| 35 | State bucket uses a DEDICATED bootstrap-managed CMK (`alias/foundry-tfstate`), not the Terraform-managed `alias/foundry-dev-main` | Reusing the Terraform key would be circular (it's defined in the state it would encrypt) and unsafe: `terraform destroy` schedules that key for deletion, which would lock us out of state on the next teardown. The dedicated key is created outside Terraform and never destroyed. IAM (not the key policy) grants the CI roles scoped access, since those roles don't exist at bootstrap time. Closes issue #15. | 2026-07-01 |
+| 35 | State bucket uses a DEDICATED bootstrap-managed CMK (`alias/foundry-tfstate`), not the Terraform-managed `alias/solidago-dev-main` | Reusing the Terraform key would be circular (it's defined in the state it would encrypt) and unsafe: `terraform destroy` schedules that key for deletion, which would lock us out of state on the next teardown. The dedicated key is created outside Terraform and never destroyed. IAM (not the key policy) grants the CI roles scoped access, since those roles don't exist at bootstrap time. Closes issue #15. | 2026-07-01 |
 
 ---
 
@@ -288,10 +288,10 @@ _Operational knowledge for day-to-day work with this environment._
 | **ECS task startup time** | After apply, tasks take ~60-90 seconds to pull image, start, and pass 3 consecutive health checks (30s interval). 503 from ALB is expected during this window. |
 | **Route 53 hosted zone on destroy** | Zone has `lifecycle { prevent_destroy = true }` — `terraform destroy` will refuse to drop it, preserving NS delegation across teardown cycles. To genuinely remove the zone (e.g., tearing down the project), remove the lifecycle block, apply, then destroy. See issue #48 and `docs/REGISTRAR_TRANSFER.md` for the durable fix. |
 | **SNS subscription on recreate** | After `terraform destroy` + `terraform apply`, the SNS email subscription is recreated in "pending confirmation" state. No alarms are delivered until you click the confirmation link in the new email from AWS. Check Gmail immediately after apply. |
-| **Testing alarm pipeline** | `aws cloudwatch set-alarm-state --alarm-name "foundry-dev-ecs-cpu-high" --state-value ALARM --state-reason "Test" --profile foundry` — Forces alarm to ALARM state. Auto-recovers on next evaluation period. Useful for validating the SNS→email chain. |
+| **Testing alarm pipeline** | `aws cloudwatch set-alarm-state --alarm-name "solidago-dev-ecs-cpu-high" --state-value ALARM --state-reason "Test" --profile foundry` — Forces alarm to ALARM state. Auto-recovers on next evaluation period. Useful for validating the SNS→email chain. |
 | **INSUFFICIENT_DATA alarms** | Normal after fresh deploy. Alarms need 1–3 evaluation periods of metric data before transitioning to OK. RDS and ElastiCache alarms may take 5–15 minutes to settle. |
 | **CloudTrail first delivery** | After `terraform apply`, CloudTrail takes 5–15 minutes to deliver the first log files to S3. Check with `aws s3 ls s3://$(terraform output -raw s3_bucket_id)/cloudtrail/ --recursive --profile foundry`. |
-| **CloudTrail verification** | `aws cloudtrail get-trail-status --name foundry-dev-trail --profile foundry` — should show `IsLogging: true` and `LatestDeliveryTime` populated within ~15 minutes. |
+| **CloudTrail verification** | `aws cloudtrail get-trail-status --name solidago-dev-trail --profile foundry` — should show `IsLogging: true` and `LatestDeliveryTime` populated within ~15 minutes. |
 
 ---
 
@@ -312,7 +312,7 @@ _Things that bit us and how we fixed them._
 ## 2026-07-04 — Grafana Cloud CloudWatch role (observability fabric Phase 1, Part A)
 
 New `modules/grafana-cloud`: cross-account read-only role
-`foundry-dev-grafana-cloudwatch` assumed by Grafana Cloud (account
+`solidago-dev-grafana-cloudwatch` assumed by Grafana Cloud (account
 `008923505280`) with this stack's External ID (repo Actions secret
 `GRAFANA_CLOUD_EXTERNAL_ID`; account id in Actions variable
 `GRAFANA_CLOUD_ACCOUNT_ID` — both flow into CI as `TF_VAR_*`). Metrics-read +

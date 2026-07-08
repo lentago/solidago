@@ -5,7 +5,7 @@
 # ecr/ecs/alb/dns modules so a reviewer reads it the same way.
 
 locals {
-  # foundry-dev-pitzilabs
+  # solidago-dev-pitzilabs
   name = "${var.project}-${var.environment}-${var.name}"
 }
 

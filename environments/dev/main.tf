@@ -15,7 +15,7 @@ provider "aws" {
   default_tags {
     tags = {
       Environment = "dev"
-      Project     = "foundry"
+      Project     = "solidago"
       ManagedBy   = "terraform"
     }
   }
