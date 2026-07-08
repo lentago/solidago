@@ -37,7 +37,7 @@ data "aws_caller_identity" "current" {}
 # look it up by alias rather than manage it here. Its ARN is handed to the IAM
 # module so the GitHub Actions roles can read/write the KMS-encrypted state.
 data "aws_kms_alias" "tfstate" {
-  name = "alias/foundry-tfstate"
+  name = "alias/solidago-tfstate"
 }
 
 module "kms" {

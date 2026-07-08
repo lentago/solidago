@@ -70,7 +70,7 @@ resources *to add* — that is the cascade set waiting to be rebuilt by standup.
 
 | Resource | Where | Why it is kept |
 |----------|-------|----------------|
-| S3 state bucket + its KMS CMK | bootstrap (`alias/foundry-tfstate`) | Holds the state itself; **must never be destroyed** — see below |
+| S3 state bucket + its KMS CMK | bootstrap (`alias/solidago-tfstate`) | Holds the state itself; **must never be destroyed** — see below |
 | IAM roles / OIDC provider | `module.iam` | Free; recreating churns trust relationships |
 | ECR repositories + images | `module.ecr`, plus the ECR repos inside `module.site_*` | **Deleting them empties the registries → all sites 503** until re-pushed |
 | Route 53 hosted zone + ACM cert | `module.dns` (zone + certificate) | Recreating changes nameservers → forces registrar re-delegation + ~75 min ACM hang |
@@ -78,7 +78,7 @@ resources *to add* — that is the cascade set waiting to be rebuilt by standup.
 | Secrets Manager secrets | `module.secrets` | 7-day recovery window |
 | Security groups, VPC core, CloudWatch log groups | `module.security_groups`, `module.vpc` (subnets/IGW/public route table), log groups in `module.ecs` etc. | Free and/or hold history |
 
-> **The state bucket and its bootstrap KMS key (`alias/foundry-tfstate`) must
+> **The state bucket and its bootstrap KMS key (`alias/solidago-tfstate`) must
 > NEVER be destroyed.** They live outside Terraform on purpose (chicken-and-egg)
 > and are not managed by any module, so no `terraform destroy` can reach them —
 > neither script references them. If either is lost, you lose access to your own

@@ -332,13 +332,13 @@ data "aws_iam_policy_document" "github_actions" {
       "s3:ListBucket",
     ]
     resources = [
-      "arn:aws:s3:::foundry-tfstate-${var.aws_account_id}",
-      "arn:aws:s3:::foundry-tfstate-${var.aws_account_id}/*",
+      "arn:aws:s3:::solidago-tfstate-${var.aws_account_id}",
+      "arn:aws:s3:::solidago-tfstate-${var.aws_account_id}/*",
     ]
   }
 
   # The state bucket is encrypted with a dedicated, bootstrap-managed CMK
-  # (alias/foundry-tfstate). Reading state requires kms:Decrypt; writing it
+  # (alias/solidago-tfstate). Reading state requires kms:Decrypt; writing it
   # requires kms:GenerateDataKey (S3 SSE-KMS derives a per-object data key).
   # Scoped to that key only — this role gets no access to the platform's
   # main encryption key. The Terraform pipeline role already holds kms:* and
