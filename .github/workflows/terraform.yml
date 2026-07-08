@@ -97,26 +97,48 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -no-color -input=false -lock-timeout=120s -out=tfplan
+        shell: bash
+        run: |
+          set -o pipefail
+          terraform plan -no-color -input=false -lock-timeout=120s -out=tfplan 2>&1 | tee plan-output.txt
         continue-on-error: true
 
       - name: Post Plan to PR
         uses: actions/github-script@v9
         with:
           script: |
-            const output = `#### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+            const fs = require('fs');
+            // GitHub caps issue comments at 65536 chars; a full-rebuild plan
+            // (100+ resources) blows past that. Read the plan from a file
+            // (never inline it into this script — that overflows ARG_MAX when
+            // node spawns) and truncate to the tail, which keeps the summary.
+            const MAX = 60000;
+            let plan;
+            try {
+              plan = fs.readFileSync('environments/dev/plan-output.txt', 'utf8');
+            } catch (e) {
+              plan = `(plan output file unavailable: ${e.message})`;
+            }
+            let notice = '';
+            if (plan.length > MAX) {
+              plan = plan.slice(-MAX);
+              notice = `> ⚠️ Plan output truncated to the last ${MAX} characters (large rebuild plan). Full plan is in the workflow run logs.`;
+            }
+            const output = `#### Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
+
+            ${notice}
 
             <details><summary>Show Plan</summary>
 
             \`\`\`
-            ${{ steps.plan.outputs.stdout }}
+            ${plan}
             \`\`\`
 
             </details>
 
             *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
 
-            github.rest.issues.createComment({
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
