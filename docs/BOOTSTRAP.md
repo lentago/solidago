@@ -1,6 +1,6 @@
 # Bootstrap Runbook
 
-This guide walks through deploying the solidago stack (AWS resources use the `solidago-` prefix; the Terraform state backend keeps its `foundry-tfstate*` names, tracked separately in issue #103) from scratch. It covers every manual step required before Terraform can manage the environment autonomously.
+This guide walks through deploying the solidago stack (AWS resources and the Terraform state backend both use the `solidago-` prefix; the backend was migrated from `foundry-tfstate-*` to `solidago-tfstate-*` on 2026-07-08 per issue #103) from scratch. It covers every manual step required before Terraform can manage the environment autonomously.
 
 **Audience:** Engineers evaluating this project, or anyone standing up their own instance of the stack.
 
@@ -59,11 +59,11 @@ export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # S3 bucket for state files
 aws s3api create-bucket \
-  --bucket "foundry-tfstate-${ACCOUNT_ID}" \
+  --bucket "solidago-tfstate-${ACCOUNT_ID}" \
   --region us-east-1
 
 aws s3api put-bucket-versioning \
-  --bucket "foundry-tfstate-${ACCOUNT_ID}" \
+  --bucket "solidago-tfstate-${ACCOUNT_ID}" \
   --versioning-configuration Status=Enabled
 
 # Dedicated CMK for the state bucket (separate from the Terraform-managed
@@ -71,10 +71,10 @@ aws s3api put-bucket-versioning \
 # the CI roles.
 KEY_ID=$(aws kms create-key \
   --description "foundry Terraform state bucket encryption key" \
-  --tags TagKey=Name,TagValue=foundry-tfstate-key \
+  --tags TagKey=Name,TagValue=solidago-tfstate-key \
   --policy '{
     "Version": "2012-10-17",
-    "Id": "foundry-tfstate-key-policy",
+    "Id": "solidago-tfstate-key-policy",
     "Statement": [{
       "Sid": "EnableRootAccountAccess",
       "Effect": "Allow",
@@ -86,12 +86,12 @@ KEY_ID=$(aws kms create-key \
   --query 'KeyMetadata.KeyId' --output text)
 
 aws kms enable-key-rotation --key-id "${KEY_ID}"
-aws kms create-alias --alias-name alias/foundry-tfstate --target-key-id "${KEY_ID}"
+aws kms create-alias --alias-name alias/solidago-tfstate --target-key-id "${KEY_ID}"
 KEY_ARN=$(aws kms describe-key --key-id "${KEY_ID}" --query 'KeyMetadata.Arn' --output text)
 
 # Default the bucket to SSE-KMS using that CMK
 aws s3api put-bucket-encryption \
-  --bucket "foundry-tfstate-${ACCOUNT_ID}" \
+  --bucket "solidago-tfstate-${ACCOUNT_ID}" \
   --server-side-encryption-configuration '{
     "Rules": [{
       "ApplyServerSideEncryptionByDefault": {
@@ -103,7 +103,7 @@ aws s3api put-bucket-encryption \
   }'
 
 aws s3api put-public-access-block \
-  --bucket "foundry-tfstate-${ACCOUNT_ID}" \
+  --bucket "solidago-tfstate-${ACCOUNT_ID}" \
   --public-access-block-configuration '{
     "BlockPublicAcls": true,
     "IgnorePublicAcls": true,
@@ -114,7 +114,7 @@ aws s3api put-public-access-block \
 
 State locking uses S3-native locking (`use_lockfile = true`, Terraform 1.10+). No DynamoDB table is needed.
 
-> **Why a dedicated state CMK (`alias/foundry-tfstate`), not the Terraform-managed `alias/solidago-dev-main`?**
+> **Why a dedicated state CMK (`alias/solidago-tfstate`), not the Terraform-managed `alias/solidago-dev-main`?**
 > The state bucket is bootstrapped *outside* Terraform (chicken-and-egg), so its
 > key can't be a Terraform resource. Reusing the Terraform-managed key would be
 > a circular dependency — that key is *defined in* the state stored in this
@@ -160,12 +160,12 @@ Update the backend configuration in `environments/dev/main.tf` to reference your
 
 ```hcl
 backend "s3" {
-  bucket       = "foundry-tfstate-YOUR_ACCOUNT_ID"
+  bucket       = "solidago-tfstate-YOUR_ACCOUNT_ID"
   key          = "environments/dev/terraform.tfstate"
   region       = "us-east-1"
   use_lockfile = true
   encrypt      = true
-  kms_key_id   = "arn:aws:kms:us-east-1:YOUR_ACCOUNT_ID:alias/foundry-tfstate"
+  kms_key_id   = "arn:aws:kms:us-east-1:YOUR_ACCOUNT_ID:alias/solidago-tfstate"
 }
 ```
 

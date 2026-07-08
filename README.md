@@ -2,7 +2,7 @@
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/lentago/solidago)
 
-> **Solidago** (goldenrod — from *solidare*, "to make whole") is the Lentago Labs codename for the Cloud Platform service. Renamed from `foundry-platform-demo` on 2026-07-03; AWS resource names were aligned to the `solidago` codename on 2026-07-07 (issue #102), except the Terraform state backend (still `foundry-tfstate*`, tracked separately in issue #103).
+> **Solidago** (goldenrod — from *solidare*, "to make whole") is the Lentago Labs codename for the Cloud Platform service. Renamed from `foundry-platform-demo` on 2026-07-03; AWS resource names were aligned to the `solidago` codename on 2026-07-07 (issue #102), and the shared Terraform state backend was migrated from `foundry-tfstate-*` to `solidago-tfstate-*` on 2026-07-08 (issue #103).
 
 A Terraform-managed AWS environment built as a personal learning lab. It hosts a live application at [icecreamtofightwith.com](https://icecreamtofightwith.com).
 

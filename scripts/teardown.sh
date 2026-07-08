@@ -19,7 +19,7 @@ set -euo pipefail
 #                                        with RDS_MODE=destroy)
 #
 # KEEP — never touched by this script (the durable foundation):
-#   - S3 state bucket + its bootstrap-managed KMS CMK (alias/foundry-tfstate)
+#   - S3 state bucket + its bootstrap-managed KMS CMK (alias/solidago-tfstate)
 #   - IAM roles / OIDC provider         (module.iam)
 #   - ECR repositories + images         (module.ecr, module.site_*'s ECR repos)
 #   - Route 53 hosted zone + ACM cert   (module.dns zone/cert; NS delegation)

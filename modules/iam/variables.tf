@@ -26,7 +26,7 @@ variable "kms_key_arn" {
 }
 
 variable "tfstate_kms_key_arn" {
-  description = "ARN of the dedicated, bootstrap-managed CMK that encrypts the Terraform state bucket (alias/foundry-tfstate). Distinct from kms_key_arn. GitHub Actions roles that read/write remote state need scoped KMS access to it."
+  description = "ARN of the dedicated, bootstrap-managed CMK that encrypts the Terraform state bucket (alias/solidago-tfstate). Distinct from kms_key_arn. GitHub Actions roles that read/write remote state need scoped KMS access to it."
   type        = string
 }
 

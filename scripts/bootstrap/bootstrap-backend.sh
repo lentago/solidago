@@ -9,8 +9,8 @@ if [[ -z "${ACCOUNT_ID}" ]]; then
   echo "ERROR: Could not determine AWS account ID. Check your AWS_PROFILE." >&2
   exit 1
 fi
-BUCKET_NAME="foundry-tfstate-${ACCOUNT_ID}"
-KMS_ALIAS="alias/foundry-tfstate"
+BUCKET_NAME="solidago-tfstate-${ACCOUNT_ID}"
+KMS_ALIAS="alias/solidago-tfstate"
 
 echo "==> Creating S3 bucket for Terraform state..."
 aws s3api create-bucket \
@@ -58,10 +58,10 @@ if [[ -z "${KEY_ID}" || "${KEY_ID}" == "None" ]]; then
   echo "    No existing key found — creating a new CMK..."
   KEY_ID=$(aws kms create-key \
     --description "foundry Terraform state bucket encryption key" \
-    --tags TagKey=Name,TagValue=foundry-tfstate-key \
+    --tags TagKey=Name,TagValue=solidago-tfstate-key \
     --policy '{
       "Version": "2012-10-17",
-      "Id": "foundry-tfstate-key-policy",
+      "Id": "solidago-tfstate-key-policy",
       "Statement": [
         {
           "Sid": "EnableRootAccountAccess",

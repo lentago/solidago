@@ -24,9 +24,9 @@
 
 | Item | Value |
 |------|-------|
-| State bucket name | foundry-tfstate-`<ACCOUNT_ID>` |
+| State bucket name | solidago-tfstate-`<ACCOUNT_ID>` |
 | State bucket region | us-east-1 |
-| State bucket encryption | SSE-KMS via dedicated bootstrap-managed CMK `alias/foundry-tfstate` (separate from the Terraform-managed `alias/solidago-dev-main`) |
+| State bucket encryption | SSE-KMS via dedicated bootstrap-managed CMK `alias/solidago-tfstate` (separate from the Terraform-managed `alias/solidago-dev-main`) |
 | State locking | S3-native (`use_lockfile = true`, Terraform 1.10+) |
 | State file key | env/dev/terraform.tfstate |
 
@@ -197,7 +197,7 @@ _Quick-reference for architectural decisions made along the way. Full ADRs live 
 | 32 | Management events only (no data events) | Data events (S3 object ops, Lambda invocations) would generate massive volume and cost for a lab. Management events cover the resource-level audit questions. | 2026-03-19 |
 | 33 | S3 bucket policy owned by CloudTrail module (not S3 module) | Keeps the S3 module general-purpose. The consumer (CloudTrail) manages its own access. If AWS Config also needs bucket access, we'll consolidate into a shared policy. | 2026-03-19 |
 | 34 | EncryptionContext condition (not aws:SourceArn) on KMS key policy | Avoids circular dependency: trail needs key ARN, and SourceArn condition would need trail ARN. EncryptionContext scoped to account is sufficient for single-account use. | 2026-03-19 |
-| 35 | State bucket uses a DEDICATED bootstrap-managed CMK (`alias/foundry-tfstate`), not the Terraform-managed `alias/solidago-dev-main` | Reusing the Terraform key would be circular (it's defined in the state it would encrypt) and unsafe: `terraform destroy` schedules that key for deletion, which would lock us out of state on the next teardown. The dedicated key is created outside Terraform and never destroyed. IAM (not the key policy) grants the CI roles scoped access, since those roles don't exist at bootstrap time. Closes issue #15. | 2026-07-01 |
+| 35 | State bucket uses a DEDICATED bootstrap-managed CMK (`alias/solidago-tfstate`), not the Terraform-managed `alias/solidago-dev-main` | Reusing the Terraform key would be circular (it's defined in the state it would encrypt) and unsafe: `terraform destroy` schedules that key for deletion, which would lock us out of state on the next teardown. The dedicated key is created outside Terraform and never destroyed. IAM (not the key policy) grants the CI roles scoped access, since those roles don't exist at bootstrap time. Closes issue #15. | 2026-07-01 |
 
 ---
 

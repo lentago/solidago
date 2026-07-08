@@ -14,7 +14,7 @@ a meal of it.
 
 Solidago — Terraform-based IaC project building a production-grade, three-tier AWS environment. All phases (networking, encryption, IAM, secrets, compute/containers, data, observability, CI/CD, security hardening) are complete.
 
-Renamed from `foundry-platform-demo` on 2026-07-03 (Solidago is the Lentago Labs service-catalog codename for the Cloud Platform). The AWS resource names were aligned to the `solidago` codename on 2026-07-07 (`var.project = "solidago"`; issue #102), landing ahead of a clean rebuild. The Terraform state backend (S3 bucket + KMS CMK, still `foundry-tfstate*`) is excepted — its rename is a separate cross-repo migration tracked in issue #103.
+Renamed from `foundry-platform-demo` on 2026-07-03 (Solidago is the Lentago Labs service-catalog codename for the Cloud Platform). The AWS resource names were aligned to the `solidago` codename on 2026-07-07 (`var.project = "solidago"`; issue #102), landing ahead of a clean rebuild. The shared Terraform state backend was then migrated from `foundry-tfstate-*` to `solidago-tfstate-*` on 2026-07-08 (issue #103) — same CMK, exposed under a new `alias/solidago-tfstate`; the state object keys (e.g. `env/dev/terraform.tfstate`) are unchanged.
 
 ## Common Commands
 
@@ -56,8 +56,8 @@ All Terraform commands run from `environments/dev/` (the only environment entry 
 | AWS profile | `default` — provider uses the default credential chain; no `foundry` profile exists |
 | Domain | icecreamtofightwith.com (primary app); lentago.dev (landing site via `modules/apex-domain`) |
 | GitHub org/repo | lentago/solidago (renamed from foundry-platform-demo 2026-07-03) |
-| State bucket | foundry-tfstate-`<ACCOUNT_ID>` |
-| State bucket encryption | SSE-KMS via dedicated bootstrap-managed CMK `alias/foundry-tfstate` (NOT the Terraform-managed `alias/solidago-dev-main`) |
+| State bucket | solidago-tfstate-`<ACCOUNT_ID>` |
+| State bucket encryption | SSE-KMS via dedicated bootstrap-managed CMK `alias/solidago-tfstate` (NOT the Terraform-managed `alias/solidago-dev-main`) |
 | State locking | S3-native (`use_lockfile = true`) |
 | AZs | us-east-1a, us-east-1b |
 
@@ -123,7 +123,7 @@ PR workflow + auto-merge arming protocol is fleet-wide; see `~/repos/CLAUDE.md`.
 
 - `environments/dev/main.tf` — how all modules connect (the orchestration layer)
 - `environments/dev/outputs.tf` — what each module exposes
-- `environments/dev/backend.tf` — remote state configuration (S3 backend, S3-native locking, SSE-KMS via the bootstrap-managed `alias/foundry-tfstate` CMK)
+- `environments/dev/backend.tf` — remote state configuration (S3 backend, S3-native locking, SSE-KMS via the bootstrap-managed `alias/solidago-tfstate` CMK)
 - `modules/*/variables.tf` — what each module accepts
 - `modules/iam/main.tf` — OIDC roles. `solidago-dev-github-actions` (trusts the workload repo `site-icecreamtofightwith-com`, née `ice-cream-book`, via `var.app_github_repo` + `additional_app_github_repos` — old names dual-trusted during the 2026-07-04 site-repo rename transition) deploys containers and updates ECS; `solidago-dev-github-actions-terraform` (trusts this repo's `terraform` environment) runs the Terraform pipeline. The split keeps platform mutations and workload deploys on separate credentials.
 
