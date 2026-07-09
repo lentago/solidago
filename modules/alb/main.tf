@@ -15,12 +15,121 @@ resource "aws_lb" "this" {
   # Set to false for lab so terraform destroy works cleanly.
   enable_deletion_protection = false
 
-  # Access logs could be enabled here to log every request to S3.
-  # Skipping for now; we'll revisit in Phase 5 (Observability).
+  # Per-request access logs to S3 — the "visitor source" signal (client IP,
+  # referer, user-agent) that CloudWatch metrics don't carry. Opt-in via
+  # var.enable_access_logs; the bucket + delivery policy are created below.
+  dynamic "access_logs" {
+    for_each = var.enable_access_logs ? [1] : []
+    content {
+      bucket  = aws_s3_bucket.access_logs[0].id
+      prefix  = var.access_logs_prefix
+      enabled = true
+    }
+  }
+
+  # The ALB validates it can write to the log bucket at create/update time,
+  # so the bucket policy must exist first. The access_logs block references
+  # only the bucket id, so make the policy dependency explicit.
+  depends_on = [aws_s3_bucket_policy.access_logs]
 
   tags = {
     Name = "${var.project}-${var.environment}-alb"
   }
+}
+
+# --- Access-logs bucket + delivery policy (optional) ---
+# A dedicated log bucket, distinct from the general-purpose modules/s3 store.
+#
+# Encryption is SSE-S3 (AES256), not the shared SSE-KMS CMK: ELB access-log
+# delivery is guaranteed against SSE-S3, and it avoids granting the ELB
+# service use of our CMK. These are the app's own access logs (bound for
+# Axiom anyway), so a dedicated AES256 bucket is the right blast radius.
+data "aws_caller_identity" "current" {
+  count = var.enable_access_logs ? 1 : 0
+}
+
+# In us-east-1 (an older region), ALB access-log delivery authenticates as
+# the regional ELB service account, not the newer logdelivery service
+# principal. This data source resolves that account ARN per-region.
+data "aws_elb_service_account" "this" {
+  count = var.enable_access_logs ? 1 : 0
+}
+
+resource "aws_s3_bucket" "access_logs" {
+  count         = var.enable_access_logs ? 1 : 0
+  bucket        = "${var.project}-${var.environment}-alb-logs-${data.aws_caller_identity.current[0].account_id}"
+  force_destroy = var.access_logs_force_destroy
+
+  tags = {
+    Name = "${var.project}-${var.environment}-alb-logs"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "access_logs" {
+  count  = var.enable_access_logs ? 1 : 0
+  bucket = aws_s3_bucket.access_logs[0].id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "access_logs" {
+  count  = var.enable_access_logs ? 1 : 0
+  bucket = aws_s3_bucket.access_logs[0].id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "access_logs" {
+  count  = var.enable_access_logs ? 1 : 0
+  bucket = aws_s3_bucket.access_logs[0].id
+
+  rule {
+    id     = "expire-alb-logs"
+    status = "Enabled"
+
+    filter {}
+
+    expiration {
+      days = var.access_logs_retention_days
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+}
+
+# Grant the regional ELB service account PutObject under the log prefix.
+# The service-account form writes objects owned by the bucket owner, so no
+# s3:x-amz-acl condition is required (that's the newer service-principal form).
+data "aws_iam_policy_document" "access_logs" {
+  count = var.enable_access_logs ? 1 : 0
+
+  statement {
+    sid    = "AllowELBAccessLogDelivery"
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = [data.aws_elb_service_account.this[0].arn]
+    }
+
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.access_logs[0].arn}/${var.access_logs_prefix}/AWSLogs/${data.aws_caller_identity.current[0].account_id}/*"]
+  }
+}
+
+resource "aws_s3_bucket_policy" "access_logs" {
+  count  = var.enable_access_logs ? 1 : 0
+  bucket = aws_s3_bucket.access_logs[0].id
+  policy = data.aws_iam_policy_document.access_logs[0].json
 }
 
 # --- Target Group ---

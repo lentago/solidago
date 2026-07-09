@@ -34,3 +34,13 @@ output "target_group_arn_suffix" {
   description = "ARN suffix of the target group (used as CloudWatch dimension)"
   value       = aws_lb_target_group.app.arn_suffix
 }
+
+output "access_logs_bucket" {
+  description = "Name of the ALB access-logs S3 bucket (null when access logs are disabled). Consumed by the betula collector that ships these logs to Axiom."
+  value       = var.enable_access_logs ? aws_s3_bucket.access_logs[0].id : null
+}
+
+output "access_logs_prefix" {
+  description = "Key prefix under which the ALB writes access logs (null when disabled)."
+  value       = var.enable_access_logs ? var.access_logs_prefix : null
+}
