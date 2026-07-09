@@ -135,6 +135,10 @@ module "alb" {
   public_subnet_ids = module.vpc.public_subnet_ids
   security_group_id = module.security_groups.alb_security_group_id
   certificate_arn   = module.dns.certificate_arn
+
+  # Deliver per-request access logs to a dedicated S3 bucket — the visitor-
+  # source signal (client IP, referer, user-agent) for betula -> Axiom.
+  enable_access_logs = true
 }
 module "ecs" {
   source = "../../modules/ecs"

@@ -220,3 +220,8 @@ output "axiom_ingest_secret_arn" {
   description = "Secret to populate out-of-band with: Authorization Bearer <axiom ingest token> (FireLens -> Axiom)"
   value       = module.secrets.axiom_ingest_secret_arn
 }
+
+output "alb_access_logs_bucket" {
+  description = "S3 bucket receiving ALB access logs (the visitor-source telemetry the betula collector ships to Axiom)."
+  value       = module.alb.access_logs_bucket
+}
