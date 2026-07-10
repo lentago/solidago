@@ -7,15 +7,15 @@ terraform {
       version = "~> 5.0"
     }
     # Packaging the ALB-log shipper Lambda: archive_file zips the vendored
-    # betula package; null_resource runs the pinned-ref fetch. See
-    # modules/alb-log-shipper.
+    # betula package; the external data source runs the pinned-ref fetch at plan
+    # time (see modules/alb-log-shipper).
     archive = {
       source  = "hashicorp/archive"
       version = "~> 2.0"
     }
-    null = {
-      source  = "hashicorp/null"
-      version = "~> 3.0"
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.0"
     }
   }
 }

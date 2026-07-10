@@ -429,6 +429,7 @@ data "aws_iam_policy_document" "github_actions_terraform" {
       "elasticloadbalancing:*",
       "ecs:*",
       "ecr:*",
+      "lambda:*",
       "rds:*",
       "elasticache:*",
       "route53:*",

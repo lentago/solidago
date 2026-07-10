@@ -27,38 +27,31 @@ locals {
 
 # --- Package betula's shipper at a pinned ref --------------------------------
 # build.sh fetches lentago/betula@var.betula_ref and vendors
-# clients/aws/alb-logs/alb_shipper/ into build/vendor/. It re-runs only when the
-# ref (or the script) changes. The package is standard-library-only and boto3
-# ships in the Lambda runtime, so nothing is pip-installed -- the zip is just
-# the source tree, with alb_shipper/ at the root so the handler resolves as
-# alb_shipper.handler.lambda_handler.
-resource "null_resource" "build" {
-  triggers = {
-    betula_repo = var.betula_repo
-    betula_ref  = var.betula_ref
-    build_sha   = filemd5("${path.module}/build.sh")
-  }
-
-  provisioner "local-exec" {
-    command = "bash ${path.module}/build.sh"
-
-    environment = {
-      BETULA_REPO = var.betula_repo
-      BETULA_REF  = var.betula_ref
-      VENDOR_DIR  = "${path.module}/build/vendor"
-    }
-  }
+# clients/aws/alb-logs/alb_shipper/ into build/vendor/, with alb_shipper/ at the
+# root so the handler resolves as alb_shipper.handler.lambda_handler. The
+# package is standard-library-only and boto3 ships in the Lambda runtime, so
+# nothing is pip-installed -- the zip is just the source tree.
+#
+# This runs as a data.external (evaluated at PLAN time), NOT a null_resource
+# provisioner (apply-only): archive_file below reads the vendored dir during
+# plan, so build/vendor/ must exist by then. A provisioner would only populate
+# it at apply, which works on the very first run but breaks every subsequent
+# `terraform plan` on a clean checkout (CI gate, a fresh local tree, the nightly
+# standup) once the resource is in state. build.sh takes the ref + repo as
+# args, sends progress to stderr, and prints {"vendor_dir": "..."} on stdout per
+# the external-program protocol. It re-runs each plan; the ref is pinned and
+# build.sh normalises mtimes, so the resulting zip is byte-stable (no perpetual
+# Lambda diff).
+data "external" "build" {
+  program = ["bash", "${path.module}/build.sh", var.betula_ref, var.betula_repo]
 }
 
-# depends_on defers the archive to apply time, so a clean checkout (where
-# build/vendor/ does not yet exist) plans without a "source_dir not found"
-# error -- the null_resource vendors the package first, then this zips it.
+# source_dir comes from the data.external result, so archive_file naturally
+# orders after the vendoring (both evaluate at plan) -- no depends_on needed.
 data "archive_file" "this" {
   type        = "zip"
-  source_dir  = "${path.module}/build/vendor"
+  source_dir  = data.external.build.result.vendor_dir
   output_path = "${path.module}/build/alb_shipper.zip"
-
-  depends_on = [null_resource.build]
 }
 
 # --- Axiom token: injected into the Lambda env at deploy time ----------------
