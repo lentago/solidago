@@ -5,7 +5,7 @@
 # target group, a host-header listener rule, and a Route 53 alias record — but
 # reuses the platform's existing VPC, cluster, ALB, app security group, IAM
 # roles, and (via a wildcard cert) the existing HTTPS listener. This is how a
-# second site (e.g. the Pitzi Labs landing page) rides on the platform that
+# second site (e.g. the Lentago Labs landing page) rides on the platform that
 # already serves the primary app, and the unit that gets reused at promotion
 # time when the site moves to its own apex domain.
 
@@ -20,7 +20,7 @@ variable "environment" {
 }
 
 variable "name" {
-  description = "Short site name, appended to the {project}-{environment} prefix (e.g. \"pitzilabs\" -> solidago-dev-pitzilabs)"
+  description = "Short site name, appended to the {project}-{environment} prefix (e.g. \"lentago\" -> solidago-dev-lentago)"
   type        = string
 }
 

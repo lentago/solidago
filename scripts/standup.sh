@@ -32,8 +32,8 @@ set -euo pipefail
 #   AUTO_APPROVE=1          skip confirmation and pass -auto-approve (same as -y)
 #   RDS_WAIT=1              wait for RDS to be 'available' before applying (--wait)
 #   AWS_PROFILE / AWS_REGION honoured via the standard AWS credential chain
-#   TF_VAR_pitzilabs_preview_host / TF_VAR_lentago_preview_host  REQUIRED
-#     (mirror the CI Actions variables)
+#   TF_VAR_lentago_preview_host  REQUIRED
+#     (mirrors the CI Actions variable)
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -68,10 +68,9 @@ if ! command -v aws >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ -z "${TF_VAR_pitzilabs_preview_host:-}" || -z "${TF_VAR_lentago_preview_host:-}" ]]; then
-  echo "ERROR: TF_VAR_pitzilabs_preview_host and TF_VAR_lentago_preview_host must be set." >&2
-  echo "       These mirror the repo Actions variables PITZILABS_PREVIEW_HOST /" >&2
-  echo "       LENTAGO_PREVIEW_HOST." >&2
+if [[ -z "${TF_VAR_lentago_preview_host:-}" ]]; then
+  echo "ERROR: TF_VAR_lentago_preview_host must be set." >&2
+  echo "       This mirrors the repo Actions variable LENTAGO_PREVIEW_HOST." >&2
   exit 1
 fi
 
