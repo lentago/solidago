@@ -6,6 +6,17 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    # Packaging the ALB-log shipper Lambda: archive_file zips the vendored
+    # betula package; null_resource runs the pinned-ref fetch. See
+    # modules/alb-log-shipper.
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.0"
+    }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -139,6 +150,37 @@ module "alb" {
   # Deliver per-request access logs to a dedicated S3 bucket — the visitor-
   # source signal (client IP, referer, user-agent) for betula -> Axiom.
   enable_access_logs = true
+}
+
+# --- ALB access-log -> Axiom shipper (visitor-source telemetry) ---
+# The deployment half of the pipeline module.alb opened above (#108, closing the
+# loop on #106/#107). Packages betula's reusable S3->Axiom shipper
+# (lentago/betula clients/aws/alb-logs/alb_shipper, pinned) as a Lambda and
+# triggers it on ObjectCreated in the access-logs bucket. betula owns the
+# shipper code; this repo owns the AWS moving parts (Lambda, IAM, notification),
+# mirroring how it owns the ECS FireLens sidecars for the ECS emitter.
+module "alb_log_shipper" {
+  source = "../../modules/alb-log-shipper"
+
+  project     = var.project
+  environment = var.environment
+  aws_region  = var.aws_region
+
+  access_logs_bucket = module.alb.access_logs_bucket
+  access_logs_prefix = module.alb.access_logs_prefix
+
+  # Parallel to the ECS FireLens dataset (cjp-solidago-ecs); a distinct
+  # dataset for the S3-based ALB access-log source. The token is the BARE
+  # form the Python shipper expects (see modules/secrets), not the FireLens
+  # header form used by module.ecs.
+  axiom_dataset          = "cjp-solidago-alb"
+  axiom_token_secret_arn = module.secrets.axiom_alb_ingest_secret_arn
+
+  # The module resolves the token by reading the secret's current *version*
+  # (aws_secretsmanager_secret_version) to inject it into the Lambda env. The
+  # ARN input alone only orders against the secret shell, so gate the whole
+  # module on module.secrets to guarantee the placeholder version exists first.
+  depends_on = [module.secrets]
 }
 module "ecs" {
   source = "../../modules/ecs"

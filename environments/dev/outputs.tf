@@ -225,3 +225,13 @@ output "alb_access_logs_bucket" {
   description = "S3 bucket receiving ALB access logs (the visitor-source telemetry the betula collector ships to Axiom)."
   value       = module.alb.access_logs_bucket
 }
+
+output "axiom_alb_ingest_secret_arn" {
+  description = "Secret to populate out-of-band with the BARE Axiom ingest token (AXIOM_API_TOKEN) for the ALB access-log -> Axiom Lambda shipper — NOT the FireLens 'Authorization Bearer <token>' header form."
+  value       = module.secrets.axiom_alb_ingest_secret_arn
+}
+
+output "alb_log_shipper_function_name" {
+  description = "Name of the Lambda that ships ALB access logs from S3 to Axiom (module.alb_log_shipper)."
+  value       = module.alb_log_shipper.function_name
+}
