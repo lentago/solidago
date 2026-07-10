@@ -88,17 +88,16 @@ module "iam" {
   # Additional workload repos that deploy onto this platform via the same app
   # OIDC role. The site repos were renamed 2026-07-04 to the site-<domain>
   # convention (ice-cream-book → site-icecreamtofightwith-com, lentagolabs-dev
-  # → site-lentago-dev, pitzilabs-dev → site-pitzilabs-dev); both old and new
-  # names are trusted during the transition — prune the old three (and flip
-  # app_github_repo above) once the renamed repos' deploys are proven green.
-  # The sites ride on the shared ALB — see module.site_pitzilabs /
-  # module.site_lentago below. The role's ECR/ECS permissions are already
-  # account-scoped, so this trust entry is all that's needed.
+  # → site-lentago-dev); both old and new names are trusted during the
+  # transition — prune the old names (and flip app_github_repo above) once the
+  # renamed repos' deploys are proven green. The pitzilabs-dev / site-pitzilabs-dev
+  # trust was removed 2026-07-10 (#80) when the retired Pitzi Labs preview site
+  # was torn down. The sites ride on the shared ALB — see module.site_lentago
+  # below. The role's ECR/ECS permissions are already account-scoped, so this
+  # trust entry is all that's needed.
   additional_app_github_repos = [
-    "pitzilabs-dev",
     "lentagolabs-dev",
     "site-icecreamtofightwith-com",
-    "site-pitzilabs-dev",
     "site-lentago-dev",
   ]
 
@@ -224,56 +223,15 @@ module "ecs_autoscaling" {
   max_capacity = 6
 }
 
-# --- Additional site: Pitzi Labs landing (pitzilabs-dev) ---
-# Rides on the SHARED ALB + ECS cluster behind a hidden, unguessable subdomain
-# of icecreamtofightwith.com (covered by the existing wildcard cert — no new
-# cert). Reuses the app security group (already allows ALB->app:8080) and the
-# ECS task roles. A host-header listener rule routes only this hostname here;
-# everything else still hits the primary app's default action. This is the
-# preview surface that gets promoted to pitzilabs.dev later (reuse this module).
-module "site_pitzilabs" {
-  source = "../../modules/site"
-
-  # Observability fabric Phase 2: container logs -> Axiom via FireLens
-  # (betula archive plane; one shared dataset, services distinguished by the
-  # ecs metadata FireLens stamps on every event).
-  axiom_dataset          = "cjp-solidago-ecs"
-  axiom_token_secret_arn = module.secrets.axiom_ingest_secret_arn
-
-  project     = var.project
-  environment = var.environment
-  name        = "pitzilabs"
-  aws_region  = var.aws_region
-
-  hostname               = var.pitzilabs_preview_host
-  listener_rule_priority = 100
-
-  vpc_id            = module.vpc.vpc_id
-  app_subnet_ids    = module.vpc.app_subnet_ids
-  security_group_id = module.security_groups.app_security_group_id
-  ecs_cluster_id    = module.ecs.cluster_id
-
-  https_listener_arn = module.alb.https_listener_arn
-  alb_dns_name       = module.alb.alb_dns_name
-  alb_zone_id        = module.alb.alb_zone_id
-  route53_zone_id    = module.dns.zone_id
-
-  task_execution_role_arn = module.iam.ecs_task_execution_role_arn
-  task_role_arn           = module.iam.ecs_task_role_arn
-
-  # Low-traffic preview: one task is plenty.
-  desired_count = 1
-}
-
 # --- Additional site: Lentago Labs landing (lentagolabs-dev) ---
-# The Tidewater (teal+copper+limestone) rebrand of pitzilabs-dev — same
-# nginx-on-Fargate static-site shape. Rides on the SHARED ALB + ECS cluster
+# The Tidewater (teal+copper+limestone) rebrand of the retired pitzilabs-dev —
+# same nginx-on-Fargate static-site shape. Rides on the SHARED ALB + ECS cluster
 # behind its own hidden, unguessable subdomain of icecreamtofightwith.com
 # (covered by the existing wildcard cert — no new cert). Reuses the app
 # security group (already allows ALB->app:8080) and the ECS task roles. A
-# host-header listener rule (priority 110, unique vs pitzilabs's 100) routes
-# only this hostname here; everything else still hits the primary app's default
-# action.
+# host-header listener rule (priority 110) routes only this hostname here;
+# everything else still hits the primary app's default action. (Priority 100 is
+# now free — it belonged to the torn-down site_pitzilabs preview, #80.)
 module "site_lentago" {
   source = "../../modules/site"
 
@@ -336,7 +294,7 @@ module "lentago_domain" {
   alb_dns_name       = module.alb.alb_dns_name
   alb_zone_id        = module.alb.alb_zone_id
 
-  # Unique vs pitzilabs preview (100) and lentago preview (110).
+  # Unique vs lentago preview (110). (Priority 100 was freed by #80.)
   listener_rule_priority = 120
 
   # Email is on Fastmail — SPF authorizes Fastmail's senders and hard-fails the

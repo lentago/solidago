@@ -169,22 +169,6 @@ output "dashboard_name" {
   description = "CloudWatch dashboard name"
   value       = module.dashboard.dashboard_name
 }
-# --- Pitzi Labs landing site (additional site on the shared platform) ---
-output "pitzilabs_preview_url" {
-  description = "Hidden preview URL for the Pitzi Labs landing site"
-  value       = module.site_pitzilabs.url
-}
-
-output "pitzilabs_ecr_repository_url" {
-  description = "ECR repo the pitzilabs-dev deploy workflow pushes images to"
-  value       = module.site_pitzilabs.ecr_repository_url
-}
-
-output "pitzilabs_ecs_service_name" {
-  description = "ECS service name for the Pitzi Labs landing site"
-  value       = module.site_pitzilabs.service_name
-}
-
 # --- Lentago Labs landing site (additional site on the shared platform) ---
 output "lentago_preview_url" {
   description = "Hidden preview URL for the Lentago Labs landing site"

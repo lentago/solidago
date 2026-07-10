@@ -13,7 +13,7 @@ set -euo pipefail
 #   - NAT Gateways + their EIPs        (module.vpc.aws_nat_gateway/aws_eip.nat)
 #   - Application Load Balancer         (module.alb)
 #   - Primary app ECS service/tasks     (module.ecs.aws_ecs_service.app)
-#   - Preview-site ECS services/tasks   (module.site_*.aws_ecs_service.this)
+#   - Preview-site ECS services/tasks   (module.site_lentago.aws_ecs_service.this)
 #   - ElastiCache replication group     (module.elasticache...replication_group)
 #   - RDS instance                      (STOPPED by default; destroyed only
 #                                        with RDS_MODE=destroy)
@@ -21,7 +21,7 @@ set -euo pipefail
 # KEEP — never touched by this script (the durable foundation):
 #   - S3 state bucket + its bootstrap-managed KMS CMK (alias/solidago-tfstate)
 #   - IAM roles / OIDC provider         (module.iam)
-#   - ECR repositories + images         (module.ecr, module.site_*'s ECR repos)
+#   - ECR repositories + images         (module.ecr, module.site_lentago's ECR repo)
 #   - Route 53 hosted zone + ACM cert   (module.dns zone/cert; NS delegation)
 #   - Terraform-managed KMS key         (module.kms, alias/solidago-dev-main)
 #   - Secrets Manager secrets           (module.secrets)
@@ -46,8 +46,8 @@ set -euo pipefail
 #   RDS_MODE=stop|destroy   RDS handling (default: stop)
 #   AUTO_APPROVE=1          skip the interactive confirmation (same as -y)
 #   AWS_PROFILE / AWS_REGION honoured via the standard AWS credential chain
-#   TF_VAR_pitzilabs_preview_host / TF_VAR_lentago_preview_host  REQUIRED
-#     (mirror the CI Actions variables; Terraform needs them even to destroy)
+#   TF_VAR_lentago_preview_host  REQUIRED
+#     (mirrors the CI Actions variable; Terraform needs it even to destroy)
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -75,7 +75,6 @@ done
 # module — module.site_* own ECR repositories we must NOT delete (constraint b).
 EPHEMERAL_TARGETS=(
   "module.ecs.aws_ecs_service.app"
-  "module.site_pitzilabs.aws_ecs_service.this"
   "module.site_lentago.aws_ecs_service.this"
   "module.alb"
   "module.elasticache.aws_elasticache_replication_group.this"
@@ -100,10 +99,10 @@ case "${RDS_MODE}" in
   *) echo "ERROR: RDS_MODE must be 'stop' or 'destroy' (got '${RDS_MODE}')." >&2; exit 2 ;;
 esac
 
-if [[ -z "${TF_VAR_pitzilabs_preview_host:-}" || -z "${TF_VAR_lentago_preview_host:-}" ]]; then
-  echo "ERROR: TF_VAR_pitzilabs_preview_host and TF_VAR_lentago_preview_host must be set." >&2
-  echo "       These mirror the repo Actions variables PITZILABS_PREVIEW_HOST /" >&2
-  echo "       LENTAGO_PREVIEW_HOST. Terraform requires them even for a targeted destroy." >&2
+if [[ -z "${TF_VAR_lentago_preview_host:-}" ]]; then
+  echo "ERROR: TF_VAR_lentago_preview_host must be set." >&2
+  echo "       This mirrors the repo Actions variable LENTAGO_PREVIEW_HOST." >&2
+  echo "       Terraform requires it even for a targeted destroy." >&2
   exit 1
 fi
 
