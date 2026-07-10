@@ -21,8 +21,7 @@ already been bootstrapped and stood up at least once.
 ```bash
 cd <repo root>
 export AWS_PROFILE=...                       # or rely on the default cred chain
-export TF_VAR_pitzilabs_preview_host=...     # mirror the CI Actions variables
-export TF_VAR_lentago_preview_host=...
+export TF_VAR_lentago_preview_host=...       # mirror the CI Actions variable
 
 # End of session — stop paying for idle resources:
 scripts/teardown.sh
@@ -49,7 +48,7 @@ is torn down; everything cheap-but-painful-to-recreate is kept.
 | NAT Gateways + EIPs | `module.vpc.aws_nat_gateway.main`, `module.vpc.aws_eip.nat` | ~$2.15/day — the biggest idle cost |
 | Application Load Balancer | `module.alb` | ~$0.65/day |
 | Primary app ECS service/tasks | `module.ecs.aws_ecs_service.app` | ~$0.80/day of Fargate |
-| Preview-site ECS services/tasks | `module.site_pitzilabs.aws_ecs_service.this`, `module.site_lentago.aws_ecs_service.this` | Fargate tasks |
+| Preview-site ECS services/tasks | `module.site_lentago.aws_ecs_service.this` | Fargate tasks |
 | ElastiCache replication group | `module.elasticache.aws_elasticache_replication_group.this` | ~$0.40/day |
 | RDS instance | **stopped** by default; `module.rds.aws_db_instance.main` only with `RDS_MODE=destroy` | ~$0.93/day |
 
@@ -72,7 +71,7 @@ resources *to add* — that is the cascade set waiting to be rebuilt by standup.
 |----------|-------|----------------|
 | S3 state bucket + its KMS CMK | bootstrap (`alias/solidago-tfstate`) | Holds the state itself; **must never be destroyed** — see below |
 | IAM roles / OIDC provider | `module.iam` | Free; recreating churns trust relationships |
-| ECR repositories + images | `module.ecr`, plus the ECR repos inside `module.site_*` | **Deleting them empties the registries → all sites 503** until re-pushed |
+| ECR repositories + images | `module.ecr`, plus the ECR repo inside `module.site_lentago` | **Deleting them empties the registries → all sites 503** until re-pushed |
 | Route 53 hosted zone + ACM cert | `module.dns` (zone + certificate) | Recreating changes nameservers → forces registrar re-delegation + ~75 min ACM hang |
 | Terraform-managed KMS key | `module.kms` (`alias/solidago-dev-main`) | 30-day recovery window; also entangled with the RDS/secret re-key trap |
 | Secrets Manager secrets | `module.secrets` | 7-day recovery window |
@@ -91,10 +90,10 @@ resources *to add* — that is the cascade set waiting to be rebuilt by standup.
 
 Two `KEEP` rules force sub-module granularity:
 
-1. **The `site` modules own ECR repositories.** `module.site_pitzilabs` and
-   `module.site_lentago` each contain an `aws_ecr_repository`. Destroying the
-   whole module would delete the repo and its images (violating constraint b).
-   So teardown targets only each site's `aws_ecs_service.this`.
+1. **The `site` modules own ECR repositories.** `module.site_lentago` contains
+   an `aws_ecr_repository`. Destroying the whole module would delete the repo
+   and its images (violating constraint b). So teardown targets only each
+   site's `aws_ecs_service.this`.
 2. **`module.ecs` owns the app CloudWatch log group.** Targeting the whole
    module would drop the log group. Teardown targets only
    `module.ecs.aws_ecs_service.app`, keeping the cluster, task definition, and
@@ -112,9 +111,9 @@ touches no Terraform code.
 
 - `terraform` and `aws` CLI on `PATH`
 - AWS credentials (default chain or `AWS_PROFILE`) for the account
-- `TF_VAR_pitzilabs_preview_host` and `TF_VAR_lentago_preview_host` exported —
-  Terraform requires all variables even for a targeted destroy. These mirror the
-  repo Actions variables `PITZILABS_PREVIEW_HOST` / `LENTAGO_PREVIEW_HOST`.
+- `TF_VAR_lentago_preview_host` exported — Terraform requires all variables even
+  for a targeted destroy. This mirrors the repo Actions variable
+  `LENTAGO_PREVIEW_HOST`.
 
 ### Run
 
