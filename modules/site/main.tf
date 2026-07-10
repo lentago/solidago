@@ -5,7 +5,7 @@
 # ecr/ecs/alb/dns modules so a reviewer reads it the same way.
 
 locals {
-  # solidago-dev-pitzilabs
+  # solidago-dev-lentago
   name = "${var.project}-${var.environment}-${var.name}"
 }
 
@@ -266,7 +266,7 @@ resource "aws_route53_record" "this" {
 
 # Adding count above changed this resource's address (this -> this[0]). Tell
 # Terraform it moved rather than destroy+recreate existing preview records
-# (e.g. site_pitzilabs, which keeps its record with create_dns_record = true).
+# (e.g. a site instance that keeps its record with create_dns_record = true).
 moved {
   from = aws_route53_record.this
   to   = aws_route53_record.this[0]
