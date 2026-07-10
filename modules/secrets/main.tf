@@ -86,3 +86,36 @@ resource "aws_secretsmanager_secret_version" "axiom_ingest" {
     ignore_changes = [secret_string]
   }
 }
+
+# --- Axiom ALB access-log ingest token (visitor-source telemetry) ---
+# Feeds the S3 -> Axiom Lambda shipper (module.alb_log_shipper, solidago#108)
+# that ships ALB access logs to the cjp-solidago-alb dataset.
+#
+# IMPORTANT — this stores a BARE token, NOT the "Authorization Bearer <token>"
+# header form of axiom_ingest above. That sibling holds the Fluent Bit header
+# string verbatim because FireLens needs it as-is. betula's Python shipper
+# (clients/aws/alb-logs/alb_shipper/axiom.py) instead reads a BARE token from
+# the AXIOM_API_TOKEN env var and builds the "Bearer <token>" header itself, so
+# storing the header form here would produce a broken double-"Bearer" header.
+# The "-header" name suffix mirrors the sibling for discoverability only.
+#
+# Ingest-only token scoped to cjp-solidago-alb. Set out-of-band; never via
+# Terraform (the version below is a placeholder, and secret_string is ignored).
+resource "aws_secretsmanager_secret" "axiom_alb_ingest" {
+  name        = "${var.project}-${var.environment}-axiom-alb-ingest-header"
+  description = "BARE Axiom ingest token for the ALB access-log -> Axiom Lambda shipper (cjp-solidago-alb dataset). Not the Fluent Bit header form."
+  kms_key_id  = var.kms_key_arn
+
+  tags = {
+    Name = "${var.project}-${var.environment}-axiom-alb-ingest-header"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "axiom_alb_ingest" {
+  secret_id     = aws_secretsmanager_secret.axiom_alb_ingest.id
+  secret_string = "PLACEHOLDER-set-out-of-band"
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}

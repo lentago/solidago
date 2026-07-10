@@ -1,6 +1,11 @@
 # Local .terraform directories
 .terraform/
 
+# alb-log-shipper build artifacts: betula's shipper package is fetched at a
+# pinned ref at build time (see modules/alb-log-shipper/build.sh), never
+# committed. The vendored source and the packaged zip are transient.
+modules/alb-log-shipper/build/
+
 # .tfstate files
 *.tfstate
 *.tfstate.*
