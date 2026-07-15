@@ -144,13 +144,40 @@ resource "aws_lambda_function_url" "this" {
   }
 }
 
-# A function URL with authorization_type = NONE still needs an explicit
-# resource-based permission granting the public principal InvokeFunctionUrl;
-# Terraform does not add it implicitly.
+# A public (NONE-auth) function URL needs the resource-based policy to grant
+# the anonymous principal TWO actions, and every request 403s if either is
+# missing:
+#
+#   1. lambda:InvokeFunctionUrl  — reach the URL (scoped to auth type NONE).
+#   2. lambda:InvokeFunction     — actually invoke the function behind it.
+#
+# The second grant became mandatory for function URLs created on/after October
+# 2025 (AWS "urls-auth" docs). The pinned AWS provider (5.100) auto-adds only
+# the InvokeFunctionUrl grant for a NONE URL, so without the explicit
+# InvokeFunction grant below the endpoint returns 403 to every anonymous
+# caller even though the function itself is healthy.
+#
+# Ideally the InvokeFunction grant is scoped to URL-origin requests with the
+# lambda:InvokedViaFunctionUrl condition (as the AWS console/newer providers
+# do). Provider 5.100's aws_lambda_permission exposes no argument for that
+# condition key (only function_url_auth_type, which is not a valid condition
+# key for the InvokeFunction action), so this grant is unconditioned. That is
+# an acceptable trade here: the endpoint is public by design, the function is a
+# stateless answer-composer that exposes no data, and its abuse ceiling is the
+# Anthropic key's spend cap regardless of how it is invoked. Revisit (scope to
+# InvokedViaFunctionUrl) if the AWS provider is upgraded to a version that
+# supports it.
 resource "aws_lambda_permission" "url" {
   statement_id           = "AllowPublicInvokeFunctionUrl"
   action                 = "lambda:InvokeFunctionUrl"
   function_name          = aws_lambda_function.this.function_name
   principal              = "*"
   function_url_auth_type = "NONE"
+}
+
+resource "aws_lambda_permission" "url_invoke_function" {
+  statement_id  = "AllowPublicInvokeFunction"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.this.function_name
+  principal     = "*"
 }
