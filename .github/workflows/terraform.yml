@@ -73,6 +73,9 @@ jobs:
       TF_VAR_pondview_preview_host: ${{ vars.PONDVIEW_PREVIEW_HOST }}
       TF_VAR_grafana_cloud_account_id: ${{ vars.GRAFANA_CLOUD_ACCOUNT_ID }}
       TF_VAR_grafana_cloud_external_id: ${{ secrets.GRAFANA_CLOUD_EXTERNAL_ID }}
+      # Anthropic key for the Essex Crossing HOA wiki's "Ask the Wiki" answer
+      # Lambda (module.ask_pondview). Repo Actions secret, never committed.
+      TF_VAR_anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
     defaults:
       run:
         working-directory: environments/dev
@@ -166,6 +169,9 @@ jobs:
       TF_VAR_pondview_preview_host: ${{ vars.PONDVIEW_PREVIEW_HOST }}
       TF_VAR_grafana_cloud_account_id: ${{ vars.GRAFANA_CLOUD_ACCOUNT_ID }}
       TF_VAR_grafana_cloud_external_id: ${{ secrets.GRAFANA_CLOUD_EXTERNAL_ID }}
+      # Anthropic key for the Essex Crossing HOA wiki's "Ask the Wiki" answer
+      # Lambda (module.ask_pondview). Repo Actions secret, never committed.
+      TF_VAR_anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
     defaults:
       run:
         working-directory: environments/dev

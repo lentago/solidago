@@ -201,6 +201,11 @@ output "pondview_ecs_service_name" {
   value       = module.site_pondview.service_name
 }
 
+output "pondview_ask_endpoint_url" {
+  description = "Public function URL for the Essex Crossing HOA wiki's 'Ask the Wiki' answer Lambda. Set as the PUBLIC_ASK_ENDPOINT Actions variable in essex-crossing-hoa so the built site POSTs questions here."
+  value       = module.ask_pondview.function_url
+}
+
 output "lentago_domain_name_servers" {
   description = "Nameservers to set at the registrar (Squarespace) for lentago.dev — the re-delegation step of the two-phase apex-domain apply."
   value       = module.lentago_domain.name_servers

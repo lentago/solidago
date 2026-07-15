@@ -59,3 +59,16 @@ variable "grafana_cloud_external_id" {
   type        = string
   sensitive   = true
 }
+
+variable "anthropic_api_key" {
+  description = <<-EOT
+    Anthropic API key for the Essex Crossing HOA wiki's "Ask the Wiki" answer
+    Lambda (module.ask_pondview). Sensitive; supplied by CI from the repo
+    Actions secret ANTHROPIC_API_KEY (TF_VAR_anthropic_api_key), never
+    committed. Empty deploys a working endpoint that 502s until the key is set,
+    so add the secret before the apply that creates the function.
+  EOT
+  type        = string
+  sensitive   = true
+  default     = ""
+}
