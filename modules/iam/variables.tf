@@ -61,7 +61,7 @@ variable "app_github_repo" {
 }
 
 variable "additional_app_github_repos" {
-  description = "Extra workload repos (besides app_github_repo) whose workflows may assume the app deploy role. Each platform-hosted site lives in its own repo and deploys via the same OIDC role; the role's ECR/ECS permissions are already account-scoped, so onboarding a new site is just adding it to this trust list."
+  description = "Extra workload repos (besides app_github_repo) whose workflows may assume the app deploy role. Each platform-hosted site lives in its own repo and deploys via the same OIDC role; the role's ECR/ECS permissions are already account-scoped, so onboarding a new site is just adding it to this trust list. Entries are bare repo names under var.github_org (e.g. \"site-lentago-dev\"); an entry may instead be owner-qualified (\"owner/repo\", e.g. \"cpitzi/essex-crossing-hoa\") to trust a repo hosted outside the org, such as a personal-account repo."
   type        = list(string)
   default     = []
 }

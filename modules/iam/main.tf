@@ -235,9 +235,12 @@ data "aws_iam_policy_document" "github_actions_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
+      # An entry may be a bare repo name (assumed under var.github_org) or an
+      # owner-qualified "owner/repo" for a repo hosted outside the org (e.g. a
+      # personal-account repo). Owner-qualified entries are used verbatim.
       values = [
         for repo in concat([var.app_github_repo], var.additional_app_github_repos) :
-        "repo:${var.github_org}/${repo}:*"
+        strcontains(repo, "/") ? "repo:${repo}:*" : "repo:${var.github_org}/${repo}:*"
       ]
     }
 
