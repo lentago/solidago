@@ -66,7 +66,9 @@ KEEP HOMEOWNERS COMPLIANT — be proactive about this, it's a core purpose:
   that boundary, genuinely helping a neighbor avoid a violation is the goal, not a caveat
   to hide behind.
 
-STYLE: a few sentences, plain and skimmable. Link to the relevant site section when it helps.`;
+STYLE: a few sentences, plain and skimmable. When it helps, point the reader to the
+relevant site section by name in plain words (e.g. "see the Trees & Open Space page") —
+do NOT fabricate markdown links or URLs; you have no link targets to insert.`;
 
 export async function handler(event) {
   const origin = process.env.ALLOWED_ORIGIN || 'https://pondviewlane.com';

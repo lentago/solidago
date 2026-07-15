@@ -38,11 +38,11 @@ locals {
 # just the source dir. archive_file evaluates at plan time and is byte-stable
 # for unchanged source, so there's no perpetual Lambda diff.
 #
-# CI GOTCHA: editing only files under src/ (e.g. the handler's SYSTEM prompt)
-# changes source_code_hash and IS a real infra change — but the Terraform
-# workflow's path filter keys on *.tf/*.tfvars, so a src-only PR skips plan and
-# apply and the edit never deploys. Touch a .tf file in the same PR (extending
-# this comment counts), or widen the filter, so the apply actually runs.
+# CI NOTE: editing only files under src/ (e.g. the handler's SYSTEM prompt)
+# changes source_code_hash and IS a real infra change. The Terraform workflow's
+# change filter includes modules/*/src/** (see .github/workflows/terraform.yml),
+# so a src-only PR correctly runs plan/apply and redeploys. (It formerly keyed on
+# *.tf/*.tfvars only and silently skipped such edits — hence this note.)
 data "archive_file" "this" {
   type        = "zip"
   source_dir  = "${path.module}/src"
