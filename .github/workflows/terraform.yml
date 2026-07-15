@@ -25,6 +25,9 @@ on:
       - '**.tf'
       - '**.tfvars'
       - '.github/workflows/terraform.yml'
+      # Lambda handler sources: archive_file hashes them into source_code_hash,
+      # so a src-only edit IS a real infra change and must trigger the apply.
+      - 'modules/*/src/**'
 
 permissions:
   id-token: write
@@ -53,7 +56,9 @@ jobs:
           fi
           changed=$(git diff --name-only "$BASE_SHA" HEAD)
           echo "changed files:"; echo "$changed"
-          if echo "$changed" | grep -qE '\.tf$|\.tfvars$|^\.github/workflows/terraform\.yml$'; then
+          # modules/*/src/** = Lambda handler sources (hashed into source_code_hash
+          # by archive_file), so a src-only edit is a real infra change too.
+          if echo "$changed" | grep -qE '\.tf$|\.tfvars$|^\.github/workflows/terraform\.yml$|^modules/[^/]+/src/'; then
             echo "tf=true" >> "$GITHUB_OUTPUT"
           else
             echo "tf=false" >> "$GITHUB_OUTPUT"
