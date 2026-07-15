@@ -146,7 +146,9 @@ export async function handler(event) {
     }),
   });
   if (!r.ok) {
-    return { statusCode: 502, headers: cors, body: JSON.stringify({ error: `model call failed (${r.status})` }) };
+    const detail = await r.text().catch(() => '');
+    console.log('anthropic_error', r.status, detail);
+    return { statusCode: 502, headers: cors, body: JSON.stringify({ error: `model call failed (${r.status})`, detail: detail.slice(0, 600) }) };
   }
   const data = await r.json();
   const answer = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
