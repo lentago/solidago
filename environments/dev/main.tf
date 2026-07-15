@@ -371,6 +371,30 @@ module "site_pondview" {
   desired_count = 1
 }
 
+# --- "Ask the Wiki" answer endpoint for the Essex Crossing HOA wiki ---
+# The composed-answer backend for the wiki's prominently-featured "Ask" box: a
+# small Node Lambda behind a public function URL that the static site POSTs
+# retrieved passages to and gets back a claude-haiku-4-5 answer (see
+# modules/ask-lambda). CORS is locked to the site's current delivery origin —
+# the hidden preview host — so only the trustee-review site can call it; add the
+# public apex here at launch. The Anthropic key rides in as a sensitive var from
+# the repo Actions secret (never committed). The site learns this endpoint via
+# the PUBLIC_ASK_ENDPOINT Actions variable in essex-crossing-hoa, wired to the
+# module's function_url output.
+module "ask_pondview" {
+  source = "../../modules/ask-lambda"
+
+  project     = var.project
+  environment = var.environment
+  name        = "pondview"
+  aws_region  = var.aws_region
+
+  # Same hidden host module.site_pondview is served on; the origin the browser
+  # sends. Scheme-qualified, no trailing slash, to match the Origin header.
+  allowed_origin    = "https://${var.pondview_preview_host}"
+  anthropic_api_key = var.anthropic_api_key
+}
+
 # --- Phase 4: Data Layer ---
 module "rds" {
   source = "../../modules/rds"
