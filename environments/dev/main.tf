@@ -393,6 +393,10 @@ module "ask_pondview" {
   # sends. Scheme-qualified, no trailing slash, to match the Origin header.
   allowed_origin    = "https://${var.pondview_preview_host}"
   anthropic_api_key = var.anthropic_api_key
+
+  # The answer model is claude-opus-4-8 with extended thinking, which can run
+  # tens of seconds per turn — well past the 30s module default. Give it room.
+  lambda_timeout = 120
 }
 
 # --- Phase 4: Data Layer ---
