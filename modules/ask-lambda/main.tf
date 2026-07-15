@@ -37,6 +37,12 @@ locals {
 # The handler is dependency-free (global fetch, no npm install), so the zip is
 # just the source dir. archive_file evaluates at plan time and is byte-stable
 # for unchanged source, so there's no perpetual Lambda diff.
+#
+# CI GOTCHA: editing only files under src/ (e.g. the handler's SYSTEM prompt)
+# changes source_code_hash and IS a real infra change — but the Terraform
+# workflow's path filter keys on *.tf/*.tfvars, so a src-only PR skips plan and
+# apply and the edit never deploys. Touch a .tf file in the same PR (extending
+# this comment counts), or widen the filter, so the apply actually runs.
 data "archive_file" "this" {
   type        = "zip"
   source_dir  = "${path.module}/src"
