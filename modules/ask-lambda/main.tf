@@ -127,21 +127,21 @@ resource "aws_lambda_function" "this" {
 
 # --- Public function URL ------------------------------------------------------
 # auth NONE: the endpoint is unauthenticated by design (a public "ask" box).
-# Abuse is bounded by (a) the function-URL CORS below, locked to the site
-# origin, (b) the handler's per-container daily request cap, and (c) the spend
-# cap on the Anthropic key itself. The site embeds this URL at build time
-# (PUBLIC_ASK_ENDPOINT).
+# Abuse is bounded by (a) the handler's own CORS enforcement, locked to
+# var.allowed_origin, (b) the handler's per-container daily request cap, and
+# (c) the spend cap on the Anthropic key itself. The site embeds this URL at
+# build time (PUBLIC_ASK_ENDPOINT).
+#
+# CORS is handled ENTIRELY by the function (handler.mjs): it answers the OPTIONS
+# preflight (204) and stamps the Access-Control-* headers on every response,
+# echoing ALLOWED_ORIGIN. We deliberately do NOT set the function URL's own
+# `cors {}` block: when both are present, AWS's CORS layer AND the handler each
+# add an `access-control-allow-origin` header, and browsers reject the duplicate
+# with a "Failed to fetch" CORS error (curl, which ignores CORS, is unaffected —
+# so this only shows up in a real browser). One authority, one set of headers.
 resource "aws_lambda_function_url" "this" {
   function_name      = aws_lambda_function.this.function_name
   authorization_type = "NONE"
-
-  cors {
-    allow_origins     = [var.allowed_origin]
-    allow_methods     = ["POST"]
-    allow_headers     = ["content-type"]
-    max_age           = 3600
-    allow_credentials = false
-  }
 }
 
 # A public (NONE-auth) function URL needs the resource-based policy to grant
