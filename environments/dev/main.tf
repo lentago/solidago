@@ -102,8 +102,9 @@ module "iam" {
     # Essex Crossing HOA wiki (pondviewlane.com content) — deploys the built
     # Astro site to module.site_pondview below as a hidden, unlisted preview for
     # trustee review before any public launch. Private repo; only the rendered
-    # site is served.
-    "essex-crossing-hoa",
+    # site is served. Owner-qualified because this one lives outside the org, on
+    # the maintainer's personal account (cpitzi), not under lentago.
+    "cpitzi/essex-crossing-hoa",
   ]
 
   # Phase 4: grant ECS roles access to RDS-managed secrets
