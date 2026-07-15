@@ -99,6 +99,11 @@ module "iam" {
     "lentagolabs-dev",
     "site-icecreamtofightwith-com",
     "site-lentago-dev",
+    # Essex Crossing HOA wiki (pondviewlane.com content) — deploys the built
+    # Astro site to module.site_pondview below as a hidden, unlisted preview for
+    # trustee review before any public launch. Private repo; only the rendered
+    # site is served.
+    "essex-crossing-hoa",
   ]
 
   # Phase 4: grant ECS roles access to RDS-managed secrets
@@ -320,6 +325,49 @@ module "lentago_domain" {
     # domain takeover on Pages). KEEP — same periodic re-check as the org record.
     { name = "_github-pages-challenge-lentago", type = "TXT", ttl = 300, records = ["9eee8470d3efb8d9b52199a9874d03"] },
   ]
+}
+
+# --- Additional site: Essex Crossing HOA wiki (pondviewlane.com content) ---
+# A hidden, unlisted preview of the Essex Crossing at Montserrat HOA wiki, for
+# the association's trustees to review before any public launch. Same shape as
+# module.site_lentago: rides the shared ALB + ECS cluster behind an unguessable
+# single-label subdomain of icecreamtofightwith.com (wildcard cert, no new
+# cert), reuses the app SG and ECS task roles. create_dns_record stays true —
+# unlike site_lentago this one is NOT promoted to an apex domain; the hidden
+# preview host IS the delivery surface. Source repo (lentago/essex-crossing-hoa)
+# is private; only the built static site is served. Hostname comes from the
+# PONDVIEW_PREVIEW_HOST Actions var (out of git), same as the other previews.
+module "site_pondview" {
+  source = "../../modules/site"
+
+  # Observability fabric Phase 2: container logs -> Axiom via FireLens, same
+  # shared dataset as the other sites (distinguished by ECS metadata).
+  axiom_dataset          = "cjp-solidago-ecs"
+  axiom_token_secret_arn = module.secrets.axiom_ingest_secret_arn
+
+  project     = var.project
+  environment = var.environment
+  name        = "pondview"
+  aws_region  = var.aws_region
+
+  hostname               = var.pondview_preview_host
+  listener_rule_priority = 130
+
+  vpc_id            = module.vpc.vpc_id
+  app_subnet_ids    = module.vpc.app_subnet_ids
+  security_group_id = module.security_groups.app_security_group_id
+  ecs_cluster_id    = module.ecs.cluster_id
+
+  https_listener_arn = module.alb.https_listener_arn
+  alb_dns_name       = module.alb.alb_dns_name
+  alb_zone_id        = module.alb.alb_zone_id
+  route53_zone_id    = module.dns.zone_id
+
+  task_execution_role_arn = module.iam.ecs_task_execution_role_arn
+  task_role_arn           = module.iam.ecs_task_role_arn
+
+  # Low-traffic preview: one task is plenty.
+  desired_count = 1
 }
 
 # --- Phase 4: Data Layer ---

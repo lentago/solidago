@@ -27,6 +27,19 @@ variable "lentago_preview_host" {
   type        = string
 }
 
+variable "pondview_preview_host" {
+  description = <<-EOT
+    Hidden, unguessable subdomain of icecreamtofightwith.com that the Essex
+    Crossing HOA wiki (module.site_pondview) is served on for trustee review
+    before any public launch. NOT committed to source — supplied by the
+    terraform workflow from the repo Actions variable PONDVIEW_PREVIEW_HOST
+    (TF_VAR_pondview_preview_host), so it stays out of git history and can be
+    rotated without a code change. Must be a single-label subdomain so the
+    wildcard cert *.icecreamtofightwith.com covers it.
+  EOT
+  type        = string
+}
+
 variable "grafana_cloud_account_id" {
   description = <<-EOT
     Grafana Cloud's AWS account ID — the principal permitted to assume the
