@@ -185,6 +185,22 @@ output "lentago_ecs_service_name" {
   value       = module.site_lentago.service_name
 }
 
+# --- Essex Crossing HOA wiki (hidden trustee-review preview) ---
+output "pondview_preview_url" {
+  description = "Hidden, unlisted preview URL for the Essex Crossing HOA wiki"
+  value       = module.site_pondview.url
+}
+
+output "pondview_ecr_repository_url" {
+  description = "ECR repo the essex-crossing-hoa deploy workflow pushes images to"
+  value       = module.site_pondview.ecr_repository_url
+}
+
+output "pondview_ecs_service_name" {
+  description = "ECS service name for the Essex Crossing HOA wiki preview"
+  value       = module.site_pondview.service_name
+}
+
 output "lentago_domain_name_servers" {
   description = "Nameservers to set at the registrar (Squarespace) for lentago.dev — the re-delegation step of the two-phase apex-domain apply."
   value       = module.lentago_domain.name_servers
