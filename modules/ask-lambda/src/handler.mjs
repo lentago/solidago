@@ -4,26 +4,30 @@
  * POST { question: string, history?: [{role,content}], contexts: [{page,title,text}] }
  *   -> { answer: string }
  *
- * A multi-turn, reasoning chat: the static site does retrieval client-side
- * (public/ask/rag-index.json) and sends, each turn, the top passages plus the
- * recent conversation; this function composes an answer with claude-opus-4-8
- * (extended thinking on) and returns it. Stateless — the knowledge base and the
- * conversation both live in the browser.
+ * A multi-turn, reasoning chat for a static site's "Ask the Wiki" feature. The
+ * site does retrieval in the browser (a build-time RAG index) and sends, each
+ * turn, the top passages plus the recent conversation; this function composes an
+ * answer with claude-opus-4-8 (extended thinking on) and returns it. Stateless —
+ * the knowledge base and the conversation both live in the browser; nothing is
+ * persisted here.
  *
- * Environment:
- *   ANTHROPIC_API_KEY   required
- *   ALLOWED_ORIGIN      default https://pondviewlane.com
+ *   browser --(question + history + top passages)--> function URL --> Anthropic
+ *                                                     (reason, compose, return)
+ *
+ * Deployed by solidago's modules/ask-lambda (this file is the vendored,
+ * canonical-for-deployment copy). The reference source lives with the site it
+ * serves, in lentago/essex-crossing-hoa at site/functions/ask/handler.mjs; keep
+ * the two in sync when the logic changes.
+ *
+ * Environment (all set by Terraform in modules/ask-lambda/main.tf):
+ *   ANTHROPIC_API_KEY   required — injected from the anthropic_api_key TF var
+ *   ALLOWED_ORIGIN      the site origin the CORS header echoes
  *   DAILY_REQUEST_CAP   default 300 (per warm container; belt over the API
  *                       spend cap set in the Anthropic console)
  *
- * Deployment: this is the reference copy. The Lambda + public function URL are
- * provisioned as infrastructure-as-code by the solidago platform
- * (lentago/solidago → modules/ask-lambda, module.ask_pondview), which vendors a
- * byte-identical copy of this file; keep the two in sync when the logic changes.
- * The site learns the deployed function URL via the PUBLIC_ASK_ENDPOINT Actions
- * variable, baked into the client at build (see .github/workflows/deploy.yml).
- * Opus + extended thinking is slow and priced above the old Haiku composer; the
- * solidago module raises the Lambda timeout and the daily/console caps bound spend.
+ * Opus + extended thinking is slow (tens of seconds) and priced well above the
+ * old Haiku composer — the Lambda timeout is raised accordingly and the daily
+ * cap + the Anthropic console spend cap are the real spend backstops.
  */
 
 const MODEL = 'claude-opus-4-8';
