@@ -31,8 +31,8 @@
  */
 
 const MODEL = 'claude-opus-4-8';
-const THINKING_BUDGET = 4000; // extended-thinking token budget
-const MAX_TOKENS = 6000; // must exceed THINKING_BUDGET; the remainder is the visible answer
+const EFFORT = 'high'; // output_config.effort — how deep the adaptive extended thinking runs
+const MAX_TOKENS = 8000; // total output cap (adaptive thinking + the visible answer both count)
 const MAX_HISTORY = 8; // prior conversation turns kept for context
 let served = 0;
 let day = new Date().toISOString().slice(0, 10);
@@ -140,15 +140,15 @@ export async function handler(event) {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      thinking: { type: 'enabled', budget_tokens: THINKING_BUDGET },
+      thinking: { type: 'adaptive' },
+      output_config: { effort: EFFORT },
       system: SYSTEM,
       messages,
     }),
   });
   if (!r.ok) {
-    const detail = await r.text().catch(() => '');
-    console.log('anthropic_error', r.status, detail);
-    return { statusCode: 502, headers: cors, body: JSON.stringify({ error: `model call failed (${r.status})`, detail: detail.slice(0, 600) }) };
+    console.log('anthropic_error', r.status, await r.text().catch(() => ''));
+    return { statusCode: 502, headers: cors, body: JSON.stringify({ error: `model call failed (${r.status})` }) };
   }
   const data = await r.json();
   const answer = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
