@@ -104,7 +104,14 @@ module "iam" {
     # trustee review before any public launch. Private repo; only the rendered
     # site is served. Owner-qualified because this one lives outside the org, on
     # the maintainer's personal account (cpitzi), not under lentago.
+    #
+    # DUAL-TRUST (cutover in progress): the public-record site content was split
+    # out of cpitzi/essex-crossing-hoa into its own org repo,
+    # lentago/site-pondviewlane-com, which now owns the deploy. Both are trusted
+    # during the transition; the personal-repo entry above is pruned once the new
+    # repo's deploy is proven on the preview host.
     "cpitzi/essex-crossing-hoa",
+    "site-pondviewlane-com",
   ]
 
   # Phase 4: grant ECS roles access to RDS-managed secrets
