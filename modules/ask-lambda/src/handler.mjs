@@ -7,7 +7,7 @@
  * A multi-turn, reasoning chat for a static site's "Ask the Wiki" feature. The
  * site does retrieval in the browser (a build-time RAG index) and sends, each
  * turn, the top passages plus the recent conversation; this function composes an
- * answer with claude-opus-4-8 (extended thinking on) and returns it. Stateless —
+ * answer with claude-sonnet-5 (adaptive thinking) and returns it. Stateless —
  * the knowledge base and the conversation both live in the browser; nothing is
  * persisted here.
  *
@@ -25,13 +25,14 @@
  *   DAILY_REQUEST_CAP   default 300 (per warm container; belt over the API
  *                       spend cap set in the Anthropic console)
  *
- * Opus + extended thinking is slow (tens of seconds) and priced well above the
- * old Haiku composer — the Lambda timeout is raised accordingly and the daily
- * cap + the Anthropic console spend cap are the real spend backstops.
+ * 2026-07-17: composer moved claude-opus-4-8/high -> claude-sonnet-5/medium —
+ * Opus-grade thinking ran tens of seconds, too slow for a chat page. The raised
+ * Lambda timeout stays; the daily cap + the Anthropic console spend cap remain
+ * the real spend backstops.
  */
 
-const MODEL = 'claude-opus-4-8';
-const EFFORT = 'high'; // output_config.effort — how deep the adaptive extended thinking runs
+const MODEL = 'claude-sonnet-5';
+const EFFORT = 'medium'; // output_config.effort — how deep the adaptive extended thinking runs
 const MAX_TOKENS = 8000; // total output cap (adaptive thinking + the visible answer both count)
 const MAX_HISTORY = 8; // prior conversation turns kept for context
 let served = 0;
