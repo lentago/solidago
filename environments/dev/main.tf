@@ -368,6 +368,12 @@ module "site_pondview" {
   hostname               = var.pondview_preview_host
   listener_rule_priority = 130
 
+  # Promoted to its own apex (module.pondview_domain) at the 2026-07 public
+  # launch: retire the hidden preview host's DNS alias. The host-header listener
+  # rule stays so the target group remains associated with the ALB; the apex
+  # (pondviewlane.com) is now the sole delivery surface.
+  create_dns_record = false
+
   vpc_id            = module.vpc.vpc_id
   app_subnet_ids    = module.vpc.app_subnet_ids
   security_group_id = module.security_groups.app_security_group_id
@@ -403,14 +409,51 @@ module "ask_pondview" {
   name        = "pondview"
   aws_region  = var.aws_region
 
-  # Same hidden host module.site_pondview is served on; the origin the browser
-  # sends. Scheme-qualified, no trailing slash, to match the Origin header.
-  allowed_origin    = "https://${var.pondview_preview_host}"
+  # The site's public delivery origin the browser sends — the apex domain as of
+  # the 2026-07 launch (was the hidden preview host during review). Single-origin
+  # CORS: this must match wherever the site is served from. Scheme-qualified, no
+  # trailing slash, to match the Origin header.
+  allowed_origin    = "https://pondviewlane.com"
   anthropic_api_key = var.anthropic_api_key
 
   # The answer model is claude-opus-4-8 with extended thinking, which can run
   # tens of seconds per turn — well past the 30s module default. Give it room.
   lambda_timeout = 120
+}
+
+# --- Apex domain: pondviewlane.com (public launch) ---
+# Brings the registered apex domain online in front of the existing
+# module.site_pondview backend on the shared ALB — its own Route 53 zone, ACM
+# cert (apex + www) attached to the shared HTTPS listener via SNI, and a host-
+# header rule. Same pattern as module.lentago_domain. Two-phase apply: create
+# the zone, re-delegate the nameservers at the registrar (Squarespace), then
+# apply the rest, or ACM DNS validation hangs (~75 min). The hidden preview host
+# is retired at cutover (module.site_pondview create_dns_record = false) and the
+# Ask CORS origin flips to the apex (module.ask_pondview allowed_origin).
+module "pondview_domain" {
+  source = "../../modules/apex-domain"
+
+  project     = var.project
+  environment = var.environment
+  name        = "pondview"
+  domain_name = "pondviewlane.com"
+
+  target_group_arn   = module.site_pondview.target_group_arn
+  https_listener_arn = module.alb.https_listener_arn
+  alb_dns_name       = module.alb.alb_dns_name
+  alb_zone_id        = module.alb.alb_zone_id
+
+  # Unique across the shared listener: 110 lentago-preview, 120 lentago.dev,
+  # 130 pondview-preview, 140 pondviewlane.com.
+  listener_rule_priority = 140
+
+  # The site sends no email. Declare it: SPF hard-fails all senders and DMARC
+  # rejects anything claiming to be from pondviewlane.com — anti-spoofing for a
+  # no-mail domain. No MX. Add mail records here later if that ever changes.
+  spf_txt = "v=spf1 -all"
+  extra_records = [
+    { name = "_dmarc", type = "TXT", ttl = 300, records = ["v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s;"] },
+  ]
 }
 
 # --- Phase 4: Data Layer ---

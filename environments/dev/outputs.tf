@@ -206,6 +206,16 @@ output "pondview_ask_endpoint_url" {
   value       = module.ask_pondview.function_url
 }
 
+output "pondview_domain_name_servers" {
+  description = "Nameservers to set at the registrar (Squarespace) for pondviewlane.com — the re-delegation step of the two-phase apex-domain apply."
+  value       = module.pondview_domain.name_servers
+}
+
+output "pondview_domain_url" {
+  description = "Public HTTPS URL for the pondviewlane.com site."
+  value       = module.pondview_domain.url
+}
+
 output "lentago_domain_name_servers" {
   description = "Nameservers to set at the registrar (Squarespace) for lentago.dev — the re-delegation step of the two-phase apex-domain apply."
   value       = module.lentago_domain.name_servers
