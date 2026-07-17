@@ -111,7 +111,16 @@ module "iam" {
     # during the transition; the personal-repo entry above is pruned once the new
     # repo's deploy is proven on the preview host.
     "cpitzi/essex-crossing-hoa",
-    "site-pondviewlane-com",
+    # lentago/site-pondviewlane-com — trusted via its IMMUTABLE subject claim.
+    # GitHub now issues immutable OIDC subs (numeric org/repo IDs) for this
+    # repo, and the repo-level use_immutable_subject=false does not override it,
+    # so its token sub is
+    #   repo:lentago@297986315/site-pondviewlane-com@1304395322:ref:refs/heads/main
+    # (org id 297986315 / repo id 1304395322). We trust that immutable form; the
+    # plain "repo:lentago/site-pondviewlane-com:*" never matches. The "/" makes
+    # the iam module emit it verbatim as repo:<value>:*. Bonus: immutable IDs
+    # survive a repo rename, unlike the plain-name entries the older repos use.
+    "lentago@297986315/site-pondviewlane-com@1304395322",
   ]
 
   # Phase 4: grant ECS roles access to RDS-managed secrets
