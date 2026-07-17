@@ -185,24 +185,24 @@ output "lentago_ecs_service_name" {
   value       = module.site_lentago.service_name
 }
 
-# --- Essex Crossing HOA wiki (hidden trustee-review preview) ---
+# --- pondviewlane.com (hidden trustee-review preview) ---
 output "pondview_preview_url" {
-  description = "Hidden, unlisted preview URL for the Essex Crossing HOA wiki"
+  description = "Hidden, unlisted preview URL for the pondviewlane.com site"
   value       = module.site_pondview.url
 }
 
 output "pondview_ecr_repository_url" {
-  description = "ECR repo the essex-crossing-hoa deploy workflow pushes images to"
+  description = "ECR repo the site-pondviewlane-com deploy workflow pushes images to"
   value       = module.site_pondview.ecr_repository_url
 }
 
 output "pondview_ecs_service_name" {
-  description = "ECS service name for the Essex Crossing HOA wiki preview"
+  description = "ECS service name for the pondviewlane.com preview"
   value       = module.site_pondview.service_name
 }
 
 output "pondview_ask_endpoint_url" {
-  description = "Public function URL for the Essex Crossing HOA wiki's 'Ask the Wiki' answer Lambda. Set as the PUBLIC_ASK_ENDPOINT Actions variable in essex-crossing-hoa so the built site POSTs questions here."
+  description = "Public function URL for the pondviewlane.com 'Ask' answer Lambda. Set as the PUBLIC_ASK_ENDPOINT Actions variable in lentago/site-pondviewlane-com so the built site POSTs questions here."
   value       = module.ask_pondview.function_url
 }
 

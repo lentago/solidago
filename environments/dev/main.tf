@@ -99,18 +99,14 @@ module "iam" {
     "lentagolabs-dev",
     "site-icecreamtofightwith-com",
     "site-lentago-dev",
-    # Essex Crossing HOA wiki (pondviewlane.com content) — deploys the built
-    # Astro site to module.site_pondview below as a hidden, unlisted preview for
-    # trustee review before any public launch. Private repo; only the rendered
-    # site is served. Owner-qualified because this one lives outside the org, on
-    # the maintainer's personal account (cpitzi), not under lentago.
+    # pondviewlane.com content — deploys the built Astro site to
+    # module.site_pondview below as a hidden, unlisted preview for trustee review
+    # before any public launch. The public-record site content was split out of
+    # the private cpitzi/essex-crossing-hoa wiki into its own org repo,
+    # lentago/site-pondviewlane-com, which owns the deploy; the private wiki
+    # publishes to it one-way and no longer deploys (its old trust entry was
+    # pruned here once the new repo's deploy was proven on the preview host).
     #
-    # DUAL-TRUST (cutover in progress): the public-record site content was split
-    # out of cpitzi/essex-crossing-hoa into its own org repo,
-    # lentago/site-pondviewlane-com, which now owns the deploy. Both are trusted
-    # during the transition; the personal-repo entry above is pruned once the new
-    # repo's deploy is proven on the preview host.
-    "cpitzi/essex-crossing-hoa",
     # lentago/site-pondviewlane-com — trusted via its IMMUTABLE subject claim.
     # GitHub now issues immutable OIDC subs (numeric org/repo IDs) for this
     # repo, and the repo-level use_immutable_subject=false does not override it,
@@ -344,16 +340,18 @@ module "lentago_domain" {
   ]
 }
 
-# --- Additional site: Essex Crossing HOA wiki (pondviewlane.com content) ---
-# A hidden, unlisted preview of the Essex Crossing at Montserrat HOA wiki, for
+# --- Additional site: pondviewlane.com (Pond View Lane public-record site) ---
+# A hidden, unlisted preview of the Pond View Lane public-record helper site, for
 # the association's trustees to review before any public launch. Same shape as
 # module.site_lentago: rides the shared ALB + ECS cluster behind an unguessable
 # single-label subdomain of icecreamtofightwith.com (wildcard cert, no new
 # cert), reuses the app SG and ECS task roles. create_dns_record stays true —
 # unlike site_lentago this one is NOT promoted to an apex domain; the hidden
-# preview host IS the delivery surface. Source repo (lentago/essex-crossing-hoa)
-# is private; only the built static site is served. Hostname comes from the
-# PONDVIEW_PREVIEW_HOST Actions var (out of git), same as the other previews.
+# preview host IS the delivery surface. Source repo lentago/site-pondviewlane-com
+# is public; only the built static site is served, and it holds public-record
+# content only (the private cpitzi/essex-crossing-hoa wiki publishes to it
+# one-way). Hostname comes from the PONDVIEW_PREVIEW_HOST Actions var (out of
+# git), same as the other previews.
 module "site_pondview" {
   source = "../../modules/site"
 
@@ -395,8 +393,8 @@ module "site_pondview" {
 # the hidden preview host — so only the trustee-review site can call it; add the
 # public apex here at launch. The Anthropic key rides in as a sensitive var from
 # the repo Actions secret (never committed). The site learns this endpoint via
-# the PUBLIC_ASK_ENDPOINT Actions variable in essex-crossing-hoa, wired to the
-# module's function_url output.
+# the PUBLIC_ASK_ENDPOINT Actions variable in lentago/site-pondviewlane-com,
+# wired to the module's function_url output.
 module "ask_pondview" {
   source = "../../modules/ask-lambda"
 
