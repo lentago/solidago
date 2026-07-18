@@ -319,6 +319,13 @@ module "lentago_domain" {
   # rest (lentago.dev sends only via Fastmail).
   spf_txt = "v=spf1 include:spf.messagingengine.com -all"
 
+  # Google Search Console domain-property verification. Shares the apex TXT set
+  # with the SPF record above (Route 53 allows one TXT set per name). KEEP —
+  # Google periodically re-checks; removing it un-verifies the property.
+  apex_txt_extra = [
+    "google-site-verification=QSbzH-SgyajmEAlo83Kgs9pm_lqsqp17N6vDtzkqi3g",
+  ]
+
   # Fastmail mail DNS (MX + DKIM + DMARC). SPF is spf_txt above. SRV client-
   # autodiscovery records can be appended here later from the Fastmail admin.
   extra_records = [
@@ -451,6 +458,16 @@ module "pondview_domain" {
   # rejects anything claiming to be from pondviewlane.com — anti-spoofing for a
   # no-mail domain. No MX. Add mail records here later if that ever changes.
   spf_txt = "v=spf1 -all"
+
+  # Google Search Console domain-property verification. Route 53 is
+  # authoritative for pondviewlane.com (the domain is registered at Squarespace
+  # but delegated here), so the token must live in this zone — a token added in
+  # the Squarespace DNS panel is inert. It shares the apex TXT set with the SPF
+  # record above (one TXT set per name).
+  apex_txt_extra = [
+    "google-site-verification=dFG66cvAe6gjMPiDqX7Tx6SUvycoRf_Sr8u0gBFnXVo",
+  ]
+
   extra_records = [
     { name = "_dmarc", type = "TXT", ttl = 300, records = ["v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s;"] },
   ]
