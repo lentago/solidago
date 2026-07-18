@@ -51,8 +51,14 @@ variable "spf_txt" {
   default     = ""
 }
 
+variable "apex_txt_extra" {
+  description = "Additional apex TXT strings published alongside spf_txt in the SINGLE apex TXT record set — e.g. [\"google-site-verification=...\"]. Route 53 allows only one TXT record set per name, so ownership-verification tokens must share the SPF set rather than being their own record. Empty by default."
+  type        = list(string)
+  default     = []
+}
+
 variable "extra_records" {
-  description = "Additional records to create in the apex zone — e.g. mail (MX, DKIM CNAMEs, DMARC, SRV). `name` is a label relative to the zone (\"\" for the apex, or e.g. \"fm1._domainkey\" / \"_dmarc\" / \"_submission._tcp\"); type/ttl/records are standard Route 53. SPF lives in spf_txt, not here."
+  description = "Additional records to create in the apex zone — e.g. mail (MX, DKIM CNAMEs, DMARC, SRV). `name` is a label relative to the zone (\"\" for the apex, or e.g. \"fm1._domainkey\" / \"_dmarc\" / \"_submission._tcp\"); type/ttl/records are standard Route 53. SPF and apex verification tokens live in spf_txt / apex_txt_extra, not here."
   type = list(object({
     name    = string
     type    = string

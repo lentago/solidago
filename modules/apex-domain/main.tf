@@ -129,15 +129,23 @@ resource "aws_route53_record" "www" {
   }
 }
 
-# --- SPF: declare "sends no mail" (preserves the domain's prior posture) ---
+# --- Apex TXT: SPF ("sends no mail") + any verification tokens ---
+# Route 53 permits only ONE TXT record set per name, so SPF and any
+# apex_txt_extra strings (e.g. a google-site-verification token) must SHARE
+# this single set rather than each being its own record. Resource kept named
+# "spf" to preserve its state address; local.apex_txt is the merged value list.
+locals {
+  apex_txt = concat(var.spf_txt == "" ? [] : [var.spf_txt], var.apex_txt_extra)
+}
+
 resource "aws_route53_record" "spf" {
-  count = var.spf_txt == "" ? 0 : 1
+  count = length(local.apex_txt) == 0 ? 0 : 1
 
   zone_id = aws_route53_zone.this.zone_id
   name    = var.domain_name
   type    = "TXT"
   ttl     = 300
-  records = [var.spf_txt]
+  records = local.apex_txt
 }
 
 # --- Extra apex-zone records (mail: MX, DKIM CNAMEs, DMARC, SRV, ...) ---
