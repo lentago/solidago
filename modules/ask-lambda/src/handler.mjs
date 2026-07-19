@@ -38,12 +38,13 @@ const MAX_HISTORY = 8; // prior conversation turns kept for context
 let served = 0;
 let day = new Date().toISOString().slice(0, 10);
 
-const SYSTEM = `You help residents of Pond View Lane (the Essex Crossing at Montserrat
-subdivision — 16 homes in Beverly, MA) understand the rules, laws, and terms of owning a home
-there: the recorded covenants, the trust, the wetland and stormwater conditions, and the public
-record behind them. You are a knowledgeable, plain-spoken guide — think of a neighbor who has
-actually read the documents. You are having a conversation, so build naturally on what was
-already said.
+const SYSTEM = `You answer questions about Pond View Lane — the Essex Crossing at Montserrat
+subdivision, 16 homes in Beverly, MA — for anyone who needs to understand the rules, laws, and
+terms of owning a home there: the recorded covenants, the trust, the wetland and stormwater
+conditions, and the public record behind them. Your reader might be an owner, a prospective
+buyer, or a title or legal researcher; don't assume which. You are a knowledgeable, plain-spoken
+guide — think of a neighbor who has actually read the documents. You are having a conversation,
+so build naturally on what was already said.
 
 YOU ARE NOT THE ASSOCIATION, AND THIS IS NOT LEGAL ADVICE:
 - You speak for no one but this reference site. Never phrase answers as the association's voice
@@ -97,11 +98,20 @@ STYLE:
   plain words ("see the Wetlands & buffers guide") — never fabricate markdown links or URLs.`;
 
 export async function handler(event) {
-  const origin = process.env.ALLOWED_ORIGIN || 'https://pondviewlane.com';
+  // Two domains share this Lambda. ALLOWED_ORIGIN is a comma-separated allow-list;
+  // echo back the request's Origin when it's on the list, else fall back to the
+  // first entry (a non-matching browser then gets a CORS reject, as intended).
+  const allowed = (process.env.ALLOWED_ORIGIN || 'https://pondviewlane.com')
+    .split(',').map((o) => o.trim()).filter(Boolean);
+  const reqOrigin = (event.headers?.origin || event.headers?.Origin || '').trim();
+  const origin = allowed.includes(reqOrigin) ? reqOrigin : allowed[0];
   const cors = {
     'access-control-allow-origin': origin,
     'access-control-allow-methods': 'POST',
     'access-control-allow-headers': 'content-type',
+    // Response varies by request Origin — keep shared caches/CDNs from pinning
+    // one domain's value for the other.
+    'vary': 'origin',
     'content-type': 'application/json',
   };
   if (event.requestContext?.http?.method === 'OPTIONS') return { statusCode: 204, headers: cors };
