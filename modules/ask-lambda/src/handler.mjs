@@ -16,12 +16,14 @@
  *
  * Deployed by solidago's modules/ask-lambda (this file is the vendored,
  * canonical-for-deployment copy). The reference source lives with the site it
- * serves, in lentago/essex-crossing-hoa at site/functions/ask/handler.mjs; keep
- * the two in sync when the logic changes.
+ * serves, in lentago/site-pondviewlane-com at functions/ask/handler.mjs; keep
+ * the two in sync when the logic changes (below this header — the headers
+ * deliberately differ).
  *
  * Environment (all set by Terraform in modules/ask-lambda/main.tf):
  *   ANTHROPIC_API_KEY   required — injected from the anthropic_api_key TF var
- *   ALLOWED_ORIGIN      the site origin the CORS header echoes
+ *   ALLOWED_ORIGIN      comma-separated origin allow-list; the CORS header
+ *                       echoes the matching request Origin
  *   DAILY_REQUEST_CAP   default 300 (per warm container; belt over the API
  *                       spend cap set in the Anthropic console)
  *
