@@ -507,6 +507,14 @@ module "essexcrossing_domain" {
   # claiming to be from the domain — anti-spoofing for a no-mail domain. No MX.
   spf_txt = "v=spf1 -all"
 
+  # Google Search Console domain-property verification. Route 53 is authoritative
+  # for essexcrossingatmontserrat.com (registrar-delegated here), so the token
+  # must live in this zone. It shares the apex TXT set with the SPF record above
+  # (one TXT set per name).
+  apex_txt_extra = [
+    "google-site-verification=5cEUUNNPjGAWMaBvUL5Uan9b7uA7AE7rvwK8oRxhrZE",
+  ]
+
   extra_records = [
     { name = "_dmarc", type = "TXT", ttl = 300, records = ["v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s;"] },
   ]
