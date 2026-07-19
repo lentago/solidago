@@ -216,6 +216,16 @@ output "pondview_domain_url" {
   value       = module.pondview_domain.url
 }
 
+output "essexcrossing_domain_name_servers" {
+  description = "Nameservers to set at the registrar for essexcrossingatmontserrat.com — the re-delegation step of the two-phase apex-domain apply."
+  value       = module.essexcrossing_domain.name_servers
+}
+
+output "essexcrossing_domain_url" {
+  description = "Public HTTPS URL for the essexcrossingatmontserrat.com site."
+  value       = module.essexcrossing_domain.url
+}
+
 output "lentago_domain_name_servers" {
   description = "Nameservers to set at the registrar (Squarespace) for lentago.dev — the re-delegation step of the two-phase apex-domain apply."
   value       = module.lentago_domain.name_servers

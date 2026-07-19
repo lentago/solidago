@@ -416,11 +416,14 @@ module "ask_pondview" {
   name        = "pondview"
   aws_region  = var.aws_region
 
-  # The site's public delivery origin the browser sends — the apex domain as of
-  # the 2026-07 launch (was the hidden preview host during review). Single-origin
-  # CORS: this must match wherever the site is served from. Scheme-qualified, no
-  # trailing slash, to match the Origin header.
-  allowed_origin    = "https://pondviewlane.com"
+  # The site's public delivery origins the browser sends. Two apex domains now
+  # share this one Lambda (identical content → identical RAG index): pondviewlane.com
+  # and essexcrossingatmontserrat.com. Comma-separated allow-list — the handler
+  # matches the request Origin against it and echoes the match back (with
+  # `vary: origin`). Apex-only: www hosts are 301-redirected to their apex at the
+  # container (nginx) layer, so no www Origin ever reaches here. Scheme-qualified,
+  # no trailing slash, to match the Origin header.
+  allowed_origin    = "https://pondviewlane.com,https://essexcrossingatmontserrat.com"
   anthropic_api_key = var.anthropic_api_key
 
   # The answer model is claude-opus-4-8 with extended thinking, which can run
@@ -467,6 +470,42 @@ module "pondview_domain" {
   apex_txt_extra = [
     "google-site-verification=dFG66cvAe6gjMPiDqX7Tx6SUvycoRf_Sr8u0gBFnXVo",
   ]
+
+  extra_records = [
+    { name = "_dmarc", type = "TXT", ttl = 300, records = ["v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s;"] },
+  ]
+}
+
+# --- Apex domain: essexcrossingatmontserrat.com (sister of pondviewlane.com) ---
+# A second registered apex fronting the SAME existing module.site_pondview backend
+# on the shared ALB — no new ECR repo, ECS service, or target group. The site
+# container serves a second build "skin" for this Host via nginx vhost switching
+# (companion work in lentago/site-pondviewlane-com); both apexes route to
+# module.site_pondview's target group. Same pattern as module.pondview_domain:
+# own Route 53 zone, ACM cert (apex + www) attached to the shared HTTPS listener
+# via SNI, host-header rule. Two-phase apply: create the zone, re-delegate the
+# nameservers at the registrar, then apply the rest, or ACM DNS validation hangs.
+# The Ask CORS origin (module.ask_pondview allowed_origin) already lists this apex.
+module "essexcrossing_domain" {
+  source = "../../modules/apex-domain"
+
+  project     = var.project
+  environment = var.environment
+  name        = "essexcrossing"
+  domain_name = "essexcrossingatmontserrat.com"
+
+  target_group_arn   = module.site_pondview.target_group_arn
+  https_listener_arn = module.alb.https_listener_arn
+  alb_dns_name       = module.alb.alb_dns_name
+  alb_zone_id        = module.alb.alb_zone_id
+
+  # Unique across the shared listener: 110 lentago-preview, 120 lentago.dev,
+  # 130 pondview-preview, 140 pondviewlane.com, 150 essexcrossingatmontserrat.com.
+  listener_rule_priority = 150
+
+  # The site sends no email. SPF hard-fails all senders; DMARC rejects anything
+  # claiming to be from the domain — anti-spoofing for a no-mail domain. No MX.
+  spf_txt = "v=spf1 -all"
 
   extra_records = [
     { name = "_dmarc", type = "TXT", ttl = 300, records = ["v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s;"] },
