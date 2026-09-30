@@ -10,7 +10,7 @@
 
 > **Solidago** (goldenrod — from *solidare*, "to make whole") is the Lentago Labs codename for the Cloud Platform service. Renamed from `foundry-platform-demo` on 2026-07-03; AWS resource names were aligned to the `solidago` codename on 2026-07-07 (issue #102), and the shared Terraform state backend was migrated from `foundry-tfstate-*` to `solidago-tfstate-*` on 2026-07-08 (issue #103).
 
-A Terraform-managed AWS environment built as a personal learning lab. It hosts a live application at [icecreamtofightwith.com](https://icecreamtofightwith.com).
+A Terraform-managed AWS environment built and run as our own estate — we practice what we publish. It hosts a live application at [icecreamtofightwith.com](https://icecreamtofightwith.com).
 
 **Authorship:** The Terraform, scripts, workflows, and documentation in this repo are co-written with [Claude](https://claude.ai) (Anthropic). I direct the architecture and review the output; Claude writes the code. I'm an infrastructure operator, not a software engineer — please don't read this repo as a portfolio of coding ability.
 
@@ -38,7 +38,7 @@ The intent is to reflect how a production environment should be built, scaled do
 
 ## 🧭 What this repo demonstrates
 
-Patterns an ops professional can lift into a day job — each one points at the code that proves it.
+Patterns you can lift into your own org — each one points at the code that proves it.
 
 | Pattern | How it shows up here |
 |---------|----------------------|
@@ -53,7 +53,9 @@ Patterns an ops professional can lift into a day job — each one points at the 
 
 ## 🛠️ Make a change yourself
 
-This is a lab — the systems are real, the stakes are not. Pick a vector:
+These systems are real, and nothing critical rides on them. That makes this a
+safe place to try a change before you make the same kind of change in your own
+shop. Pick one:
 
 **Ship a new workload (module + Lambda) onto the shared platform.** Add or edit a module (for example [`modules/ask-lambda`](modules/ask-lambda)) and wire it into [`environments/dev/main.tf`](environments/dev/main.tf), then open a PR. The `changes` job detects the `.tf` edits, `plan` runs and posts the diff as a PR comment for review, and `gate` requires it green before merge. On merge to `main`, the `apply` job assumes the Terraform OIDC role and stands up the real AWS resources — no manual console step. This is the org-level showcase vector: a newcomer can trace one PR straight through to a live AWS effect.
 **Proof this works:** [#119 — Add ask-lambda module + wire pondview 'Ask the Wiki' answer endpoint](https://github.com/lentago/solidago/pull/119); [#109 — Deploy the ALB-access-log → Axiom shipper as a Lambda](https://github.com/lentago/solidago/pull/109); [#117 — Add site_pondview: hidden preview for the Essex Crossing HOA wiki](https://github.com/lentago/solidago/pull/117).
@@ -234,7 +236,8 @@ This project is open source. See individual files for details.
 
 ---
 
-> 🌱 **Lentago Labs** is a team learning lab — real systems, non-critical stakes, modern
-> operations patterns demonstrated in the open. Start at the
-> [org profile](https://github.com/lentago), and read this repo on
-> [DeepWiki](https://deepwiki.com/lentago/solidago).
+> 🌱 **Lentago Labs** is a pro-bono operations practice for organizations that
+> run on volunteers, donations, and one overworked tech person. Everything here
+> is free to take, and we practice what we publish: our own estate runs this
+> way, in the open. Start at the [org profile](https://github.com/lentago), and
+> read this repo on [DeepWiki](https://deepwiki.com/lentago/solidago).
