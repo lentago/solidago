@@ -1,21 +1,37 @@
 # Adopting Solidago
 
-Solidago is a Terraform project that stands up a complete, three-tier AWS
-environment you own outright: a VPC with public/app/data subnets across two
-availability zones, an Application Load Balancer (ALB) fronting containers on
-ECS Fargate, a PostgreSQL database (RDS) and a Redis cache (ElastiCache), plus
-IAM/OIDC, secrets, DNS/TLS, monitoring, and CI/CD wired together. When you
-finish, you have a real AWS account running a real load-balanced web service on
-your own domain, deployed by GitHub Actions with no long-lived cloud
-credentials stored anywhere. It is a *platform*, not a single app — one shared
-ALB and ECS cluster host several small static sites side by side.
+**What you're about to do:** stand up your own copy of Solidago — a complete,
+three-tier AWS environment you own outright. That's a VPC (virtual private
+cloud — your own isolated slice of AWS networking) with public, app, and data
+subnets across two availability zones; an Application Load Balancer (ALB)
+fronting containers on ECS Fargate; a PostgreSQL database (RDS) and a Redis
+cache (ElastiCache); plus IAM/OIDC, secrets, DNS/TLS, monitoring, and CI/CD,
+all wired together. When you're done, you have a real AWS account running a
+real load-balanced web service on your own domain, deployed by GitHub Actions
+with no long-lived cloud credentials stored anywhere. It's a *platform*, not a
+single app — one shared ALB and ECS cluster can host several small sites side
+by side.
 
-What it is **not**: it is not serverless or free-tier. It runs paid, always-on
-infrastructure (NAT gateways, an ALB, RDS, ElastiCache) that costs real money
-by the hour — see [Prerequisites](#prerequisites) — so the
-[Teardown](#teardown) section is not optional reading. A registered domain is
-mandatory: TLS certificates (AWS Certificate Manager, "ACM") and DNS
-(Route 53) are load-bearing, not add-ons.
+**Why bother:** it's the same shape of infrastructure you'd reach for to put a
+donor portal, a member site, or anything else your org needs live on its own
+domain — built once, in the open, so you can copy it instead of starting from
+a blank AWS console.
+
+**Time:** about 45 minutes of hands-on work for a fresh account with a
+registered domain, plus DNS-propagation and certificate-validation wait time
+(usually under an hour, occasionally up to ~75 minutes on a cold delegation).
+Nobody has run this drill start-to-finish yet, so treat that estimate as
+unproven — see [Receipt](#receipt).
+
+**What it costs:** real money, continuously — **~$130/month** running 24/7;
+see [Prerequisites](#prerequisites) for the full breakdown. That's why
+[Teardown](#teardown) is not optional reading.
+
+> **Heads up.** This is not serverless and not free-tier. It runs paid,
+> always-on infrastructure — NAT gateways, an ALB, RDS, ElastiCache — that
+> bills by the hour whether you're using it or not. A registered domain is
+> mandatory too: TLS certificates (AWS Certificate Manager, or "ACM") and DNS
+> (Route 53) are load-bearing here, not add-ons.
 
 **Status of this runbook:** never run against a fresh account —
 **unexercised**. See [Receipt](#receipt).
@@ -26,10 +42,11 @@ mandatory: TLS certificates (AWS Certificate Manager, "ACM") and DNS
   repo you control.
 - HTTPS on your own domain, terminated at the ALB with an auto-renewing ACM
   certificate.
-- Container deploys via GitHub Actions using OIDC federation — **no AWS access
-  keys are ever stored** in GitHub.
-- A selective teardown/standup pair of scripts so an idle lab costs pennies a
-  day instead of ~$4.50 (see [Teardown](#teardown)).
+- Container deploys via GitHub Actions using OIDC federation (OpenID Connect —
+  GitHub proves its identity to AWS with a short-lived token instead of a
+  stored key) — **no AWS access keys are ever stored** in GitHub.
+- A selective teardown/standup pair of scripts so an idle stack costs pennies
+  a day instead of ~$4.50 (see [Teardown](#teardown)).
 
 | What | Who owns it |
 |---|---|
@@ -40,16 +57,18 @@ mandatory: TLS certificates (AWS Certificate Manager, "ACM") and DNS
 | The container images / site content | You (they live in separate workload repos you also own) |
 
 Nothing in the running stack is owned or hosted by Lentago Labs. The reference
-estate ships coupled to *our* account, domains, and a few external SaaS
-integrations (Grafana Cloud, Axiom, Anthropic) — every one of those is listed
-in the [Swap list](#swap-list) and every SaaS one is optional.
+estate you're copying from ships coupled to *our* account, domains, and a few
+external SaaS integrations (Grafana Cloud, Axiom, Anthropic) — every one of
+those is listed in the [Swap list](#swap-list), and every SaaS one is
+optional.
 
 ## What this is not
 
-- **Not a managed PaaS.** You operate the AWS resources; Terraform only defines
-  them. There is no control plane hiding the load balancer or the database from
-  you.
-- **Not multi-region or highly available across regions.** It is two
+- **Not a managed PaaS** (platform as a service — a hosted product that runs
+  the servers for you). You operate the AWS resources; Terraform only defines
+  them. There's no control plane hiding the load balancer or the database
+  from you.
+- **Not multi-region or highly available across regions.** It's two
   availability zones in one region (`us-east-1` by default).
 - **Not free, and not safe to leave running unattended.** Continuous cost is
   ~$130/month; an abandoned stack keeps billing until you tear it down.
@@ -59,17 +78,17 @@ in the [Swap list](#swap-list) and every SaaS one is optional.
 Everything you need, in one list. No hunting through other repos.
 
 - **Accounts:**
-  - An **AWS account** with root/admin access (you will create IAM roles).
+  - An **AWS account** with root/admin access (you'll be creating IAM roles).
   - A **GitHub account**, and an **organization or user** that will own your
     fork and the workload repo(s). CI authenticates to AWS as that org via
-    OIDC, so the org name is baked into an IAM trust policy.
+    OIDC, so the org name gets baked into an IAM trust policy.
   - An account at a **domain registrar** where you can edit nameserver (NS)
     records — the reference stack's domains are registered at Squarespace, but
     any registrar works.
-- **A registered domain — mandatory.** ACM and Route 53 are not optional in
-  this stack; the ALB will not serve HTTPS without a validated certificate, and
-  validation happens through a Route 53 hosted zone you delegate your domain
-  to. A single domain is enough to start.
+- **A registered domain — mandatory.** ACM and Route 53 aren't optional here;
+  the ALB won't serve HTTPS without a validated certificate, and validation
+  happens through a Route 53 hosted zone you delegate your domain to. One
+  domain is enough to start.
 - **Hardware:** any machine that runs the CLIs below. Nothing special.
 - **Tools:**
   - **Terraform ≥ 1.10** — state locking is S3-native (`use_lockfile`), which
@@ -86,19 +105,20 @@ Everything you need, in one list. No hunting through other repos.
   - **Grafana Cloud** — set `grafana_cloud_account_id` / `_external_id` to
     create a read-only cross-account metrics role; leave both `""` to skip the
     module entirely.
-  - **Anthropic API key** — powers the optional "Ask the Wiki" Lambda; blank
-    deploys it in a degraded state (returns 502) rather than failing.
+  - **Anthropic API key** — powers the optional "Ask the Wiki" Lambda; leave it
+    blank and the Lambda deploys in a degraded state (returns 502) instead of
+    failing.
   - **Axiom** — the reference stack ships container and ALB logs to an Axiom
-    dataset. This is *not* yet parameterized behind an on/off flag; see the
+    dataset. This one isn't parameterized behind an on/off flag yet; see the
     [Swap list](#swap-list).
 
-**Cost:** **~$130/month running continuously**, dominated by the two NAT
-gateways (~$65/mo combined). Other line items: ALB ~$16, RDS ~$15, ElastiCache
-~$12, Fargate ~$10, WAF ~$8–9, the rest (Route 53, CloudTrail, Config, KMS,
-S3) ~$5. The selective teardown in [`docs/RUNBOOK.md`](docs/RUNBOOK.md) drops
-the always-on resources when the lab is idle, bringing a mostly-idle lab to
-**roughly $40/month**. Budget alerts fire by email at 50/80/100% of a
-$100/month threshold.
+> **Heads up — this costs real money.** **~$130/month running
+> continuously**, dominated by the two NAT gateways (~$65/mo combined). Other
+> line items: ALB ~$16, RDS ~$15, ElastiCache ~$12, Fargate ~$10, WAF ~$8–9,
+> the rest (Route 53, CloudTrail, Config, KMS, S3) ~$5. The selective teardown
+> in [`docs/RUNBOOK.md`](docs/RUNBOOK.md) drops the always-on resources when
+> the stack is idle, bringing a mostly-idle stack to **roughly $40/month**.
+> Budget alerts fire by email at 50/80/100% of a $100/month threshold.
 
 **Time:** BOOTSTRAP estimates ~45 minutes for a fresh account with a registered
 domain, plus DNS-propagation and ACM-validation wait time (usually under an
@@ -107,10 +127,11 @@ yet been independently timed — see [Receipt](#receipt).
 
 ## Intake
 
-Every value you must supply lives in one file:
+Every value you need to supply lives in one file:
 [`environments/dev/terraform.tfvars.example`](environments/dev/terraform.tfvars.example).
-Copy it to `environments/dev/terraform.tfvars` (which is gitignored) and fill in
-the answers. The third column names the exact variable each answer becomes.
+Copy it to `environments/dev/terraform.tfvars` (git ignores this file, so your
+answers never get committed) and fill in your answers. The third column names
+the exact variable each answer becomes.
 
 | Question | Your answer | Maps to |
 |---|---|---|
@@ -123,17 +144,17 @@ the answers. The third column names the exact variable each answer becomes.
 | Grafana Cloud External ID (optional; blank to skip) | | `terraform.tfvars` → `grafana_cloud_external_id` |
 | Anthropic API key for the Ask Lambda (optional; blank = degraded) | | `terraform.tfvars` → `anthropic_api_key` |
 
-Some values are **not** Terraform variables — they are hardcoded into the
+Some values are **not** Terraform variables — they're hardcoded into the
 backend config, the CI workflow, and the root module. Those are handled in the
 [Swap list](#swap-list) below, not here.
 
 ## Swap list
 
-These are the opinionated values carried over from the reference estate. Find
-and replace every one — an un-swapped value here is the failure mode this
-section exists to prevent. "Mechanical" means *put your value in and move on*.
-Where a value cannot be cleanly parameterized, the row says so and points at the
-tracking issue.
+These are the opinionated values carried over from our reference estate. Find
+and replace every one — an un-swapped value here is the exact failure mode
+this section exists to prevent. "Mechanical" means *put your value in and
+move on*. Where a value can't be cleanly parameterized, the row says so and
+points at the tracking issue.
 
 | Ours | Where it lives | Put yours here | Tracked |
 |---|---|---|---|
@@ -154,20 +175,21 @@ tracking issue.
 | Axiom datasets `cjp-solidago-ecs` / `cjp-solidago-alb` + the FireLens sidecar and ALB-log shipper wiring | `environments/dev/main.tf:180–224,270,379` and `module.secrets` | Requires an Axiom account, or delete the `axiom_*` inputs + `module.alb_log_shipper` by hand | **structural** — there is no skip flag yet, unlike Grafana Cloud. Tracked in [#188](https://github.com/lentago/solidago/issues/188) |
 | Monthly budget threshold `$100` | `environments/dev/main.tf` (`module.budgets`) | Your budget | mechanical |
 
-**On plan cleanliness:** the reference repo's CI plans are *not* clean — three
-ECS task definitions and one SNS subscription always show as pending changes
+**On plan cleanliness:** our own repo's CI plans are *not* clean — three ECS
+task definitions and one SNS subscription always show as pending changes
 because live deploys run ahead of Terraform. That drift is tracked in
 [issue #184](https://github.com/lentago/solidago/issues/184). Your **first**
 plan against a fresh account is all creates and free of that noise; the same
-drift will appear only after you deploy a container image and re-plan. When a
-drill step below says "check the plan," read it with #184 in mind — those three
-task-definition replacements are known and not your error.
+drift shows up only after you deploy a container image and re-plan. When a
+drill step below says "check the plan," read it with #184 in mind — those
+three task-definition replacements are known and not your error.
 
 ## The drill
 
 Numbered, one action per step, **local-first**: everything you can verify
-offline comes before anything that touches AWS or costs money. Placeholders are
-`<LOUD>`. If a check does not go green, stop — the next step assumes it worked.
+offline comes before anything that touches AWS or costs money. Placeholders
+look like `<LOUD>`. If a check doesn't go green, stop there — the next step
+assumes the one before it worked.
 
 | # | Step | Check it's green | ✅ |
 |---|---|---|---|
@@ -184,35 +206,35 @@ offline comes before anything that touches AWS or costs money. Placeholders are
 | 11 | Create the GitHub `terraform` Environment and a `main` branch-protection ruleset requiring the Terraform Plan check ([BOOTSTRAP Steps 8–9](docs/BOOTSTRAP.md#step-8-create-the-github-environment)). | Repo → Settings shows the `terraform` environment and the ruleset. | |
 | 12 | Verify the pipelines: open a trivial PR (plan runs), merge it (apply runs) ([BOOTSTRAP Step 10](docs/BOOTSTRAP.md#step-10-verify-the-pipelines)). | The PR's **Terraform Plan** check is green; the post-merge **Apply** completes. | |
 
-**If a check does not go green,** stop at that step and see
+**If a check doesn't go green,** stop at that step and see
 [Troubleshooting](#troubleshooting).
 
-> ### ⚠️ Step 10 is where adopters get stuck
->
-> Unlike the other steps, the Terraform-pipeline role in Step 10 is **not**
-> created by `terraform apply`. It is a chicken-and-egg bootstrap: the role that
-> lets CI run Terraform cannot itself be created by that CI. So you create the
-> IAM role and policy **by hand with the AWS CLI**, then run **three
+> **Heads up — this is where people get stuck: Step 10.** Unlike the other
+> steps, the Terraform-pipeline role in Step 10 is **not** created by
+> `terraform apply`. It's a chicken-and-egg bootstrap: the role that lets CI
+> run Terraform can't itself be created by that CI. So you create the IAM
+> role and policy **by hand with the AWS CLI**, then run **three
 > `terraform import` commands** to adopt them into state so Terraform manages
 > them from then on. The exact commands and JSON are in
 > [BOOTSTRAP Step 7](docs/BOOTSTRAP.md#step-7-create-the-terraform-pipeline-iam-role) —
 > follow them verbatim, substituting your account ID and org. If the import
 > addresses or the OIDC `sub` claim (`repo:<org>/solidago:environment:terraform`)
-> don't match exactly, `terraform plan` will show the role being **destroyed and
-> recreated** instead of "No changes" — that is the tell that the import didn't
-> take. Fix the trust policy or re-run the import before proceeding.
+> don't match exactly, `terraform plan` will show the role being **destroyed
+> and recreated** instead of "No changes" — that's the tell that the import
+> didn't take. Fix the trust policy or re-run the import before proceeding.
 
 ## Verify it works
 
-The end-to-end proof is a page served over HTTPS from your own domain:
+Here's how you know it worked: a page served over HTTPS from your own domain,
+end to end.
 
 - `curl -I https://<YOUR_DOMAIN>` returns **HTTP/2 200** with a valid,
   non-self-signed certificate (your browser shows the padlock, no warning).
-- The request is being load-balanced: the response comes from an ECS Fargate
-  task, not a placeholder — the ALB target group shows **healthy** targets in
-  the AWS console (or via `aws elbv2 describe-target-health`).
-- If you kept the monitoring module, a metric arrives: the CloudWatch dashboard
-  for your ALB shows request count climbing after your `curl`s.
+- The request is actually being load-balanced: the response comes from an ECS
+  Fargate task, not a placeholder — the ALB target group shows **healthy**
+  targets in the AWS console (or via `aws elbv2 describe-target-health`).
+- If you kept the monitoring module, a metric shows up: the CloudWatch
+  dashboard for your ALB shows request count climbing after your `curl`s.
 
 A green CI run is *not* the proof — the page actually loading is.
 
@@ -239,21 +261,22 @@ above are unproven, not that they are zero.
 
 ## Teardown
 
-Removing this stack is a first-class operation, documented in full at
+Removing this stack is a first-class operation here, documented in full at
 [`docs/RUNBOOK.md`](docs/RUNBOOK.md). Two modes:
 
 - **Selective teardown** (day-to-day): `scripts/teardown.sh` destroys only the
   expensive always-on resources (NAT gateways, ALB, Fargate tasks, ElastiCache;
   RDS is *stopped*, not destroyed) and keeps the durable foundation, so
   `scripts/standup.sh` brings it back in minutes. This is how you park an idle
-  lab at ~$40/month equivalent instead of ~$130.
+  stack at ~$40/month equivalent instead of ~$130.
 - **Full teardown**: `terraform destroy` from `environments/dev` removes
   everything Terraform manages. The state bucket and its dedicated KMS key are
   bootstrapped *outside* Terraform and are deliberately **not** destroyed —
   they cost pennies and hold your state.
 
-**Confirm the billing actually stopped.** This is the section a non-profit
-should trust the rest of the document by, so verify it explicitly:
+**Confirm the billing actually stopped.** This is the section that should
+earn your trust in the rest of the document, so verify it explicitly — don't
+take our word for it:
 
 - `aws ec2 describe-nat-gateways --filter Name=state,Values=available` returns
   **empty** — NAT gateways are the largest line item and bill until deleted.
@@ -330,9 +353,9 @@ deliver.
 
 Open an issue on this repository. Include: what step you were on, the exact
 command, the full output, and your platform (Terraform/AWS CLI versions). If a
-step here was wrong, unclear, or missing a prerequisite, that is the most
-valuable issue you can file — this runbook is **unexercised**, and the first
-person to run it end to end will find things worth fixing.
+step here was wrong, unclear, or missing a prerequisite, that's the most
+valuable issue you can file — this runbook is **unexercised**, and you may be
+the first person to run it end to end and find things worth fixing.
 
 ---
 
