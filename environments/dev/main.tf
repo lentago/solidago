@@ -660,6 +660,29 @@ module "budgets" {
   sns_topic_arn         = module.monitoring.sns_topic_arn
 }
 
+# --- uvularia demo sandbox (issue #195) ---
+# Fences the lentago/uvularia demonstration "Ask" function off inside this one
+# account: a single OIDC deploy role trusting only lentago/uvularia-demo-ask-rules,
+# a permissions boundary + uvularia-demo- name prefix capping it to Lambda / IAM
+# / DynamoDB / SSM-read / CloudWatch Logs, state access limited to one key, and a
+# $5 budget + error alarm on their own SNS topic. The demo itself is Terraformed
+# from the rules repo through this role — this module only builds the fence. See
+# modules/uvularia-demo-sandbox/README.md (what it isolates, what it cannot, and
+# one-apply teardown). Reuses the account-level GitHub OIDC provider and the
+# bootstrap-managed state CMK; touches no other module's permissions.
+module "uvularia_demo_sandbox" {
+  source = "../../modules/uvularia-demo-sandbox"
+
+  project     = var.project
+  environment = var.environment
+
+  aws_account_id = data.aws_caller_identity.current.account_id
+  aws_region     = var.aws_region
+
+  oidc_provider_arn   = module.iam.github_oidc_provider_arn
+  tfstate_kms_key_arn = data.aws_kms_alias.tfstate.target_key_arn
+}
+
 # --- Phase 7: Security Hardening ---
 module "waf" {
   source = "../../modules/waf"
