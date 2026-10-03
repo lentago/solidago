@@ -265,3 +265,24 @@ output "alb_log_shipper_function_name" {
   description = "Name of the Lambda that ships ALB access logs from S3 to Axiom (module.alb_log_shipper)."
   value       = module.alb_log_shipper.function_name
 }
+
+# --- uvularia demo sandbox (issue #195) ---
+output "uvularia_demo_deploy_role_arn" {
+  description = "Role the lentago/uvularia-demo-ask-rules CI assumes via OIDC to deploy the demo Ask function into its fence."
+  value       = module.uvularia_demo_sandbox.deploy_role_arn
+}
+
+output "uvularia_demo_permissions_boundary_arn" {
+  description = "Permissions boundary the rules repo must attach to every IAM role it creates (uvularia-demo-boundary)."
+  value       = module.uvularia_demo_sandbox.permissions_boundary_arn
+}
+
+output "uvularia_demo_state_key" {
+  description = "The one S3 state key the sandbox deploy role may use, in bucket solidago-tfstate-<account>."
+  value       = module.uvularia_demo_sandbox.state_key
+}
+
+output "uvularia_demo_anthropic_api_key_parameter_path" {
+  description = "SSM SecureString path the demo Ask function reads its Anthropic key from — written by hand, never in Terraform state (see modules/uvularia-demo-sandbox/README.md)."
+  value       = module.uvularia_demo_sandbox.anthropic_api_key_parameter_path
+}
