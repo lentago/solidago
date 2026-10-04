@@ -3,11 +3,21 @@
 variable "project" {
   description = "Project name used for resource naming"
   type        = string
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{0,18}[a-z0-9]$", var.project))
+    error_message = "project must be a lowercase slug (letters, digits, hyphens) of 2-20 characters, starting with a letter and not ending in a hyphen"
+  }
 }
 
 variable "environment" {
   description = "Environment name (dev, staging, prod)"
   type        = string
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{0,18}[a-z0-9]$", var.environment))
+    error_message = "environment must be a lowercase slug (letters, digits, hyphens) of 2-20 characters, starting with a letter and not ending in a hyphen"
+  }
 }
 
 variable "aws_region" {
@@ -19,6 +29,11 @@ variable "aws_region" {
 variable "app_subnet_ids" {
   description = "Private app-tier subnet IDs where ECS tasks will run (one per AZ for HA)"
   type        = list(string)
+
+  validation {
+    condition     = length(var.app_subnet_ids) >= 1
+    error_message = "app_subnet_ids must contain at least one subnet ID (use one per AZ for HA)"
+  }
 }
 
 variable "security_group_id" {
@@ -48,6 +63,11 @@ variable "container_port" {
   description = "Port the container listens on (must match ALB target group and security group rules)"
   type        = number
   default     = 8080
+
+  validation {
+    condition     = var.container_port >= 1 && var.container_port <= 65535 && floor(var.container_port) == var.container_port
+    error_message = "container_port must be an integer between 1 and 65535"
+  }
 }
 
 # --- Platform ---
@@ -70,18 +90,33 @@ variable "task_cpu" {
   description = "CPU units for the Fargate task (256 = 0.25 vCPU, 512 = 0.5, 1024 = 1 vCPU)"
   type        = number
   default     = 256
+
+  validation {
+    condition     = contains([256, 512, 1024, 2048, 4096, 8192, 16384], var.task_cpu)
+    error_message = "task_cpu must be a valid Fargate CPU value: 256, 512, 1024, 2048, 4096, 8192 or 16384"
+  }
 }
 
 variable "task_memory" {
   description = "Memory in MiB for the Fargate task (must be compatible with CPU — see AWS docs)"
   type        = number
   default     = 512
+
+  validation {
+    condition     = var.task_memory >= 512 && var.task_memory <= 122880 && floor(var.task_memory) == var.task_memory && var.task_memory % 512 == 0
+    error_message = "task_memory must be an integer MiB between 512 and 122880, in multiples of 512 (the valid CPU/memory pairing is checked on the task definition)"
+  }
 }
 
 variable "desired_count" {
   description = "Number of task instances to run (2 = one per AZ for HA)"
   type        = number
   default     = 2
+
+  validation {
+    condition     = var.desired_count >= 0 && floor(var.desired_count) == var.desired_count
+    error_message = "desired_count must be a non-negative integer"
+  }
 }
 
 # --- IAM ---
