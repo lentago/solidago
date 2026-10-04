@@ -679,6 +679,10 @@ module "uvularia_demo_sandbox" {
   aws_account_id = data.aws_caller_identity.current.account_id
   aws_region     = var.aws_region
 
+  # Created 2026-10-03, so GitHub issues this repo the immutable numeric-ID OIDC
+  # subject; the role trusts repo:lentago@<org-id>/uvularia-demo-ask-rules@<id>:...
+  rules_repo_id = 1403723366 # gh api repos/lentago/uvularia-demo-ask-rules --jq .id
+
   oidc_provider_arn   = module.iam.github_oidc_provider_arn
   tfstate_kms_key_arn = data.aws_kms_alias.tfstate.target_key_arn
 }

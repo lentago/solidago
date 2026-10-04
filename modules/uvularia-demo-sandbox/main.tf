@@ -114,6 +114,12 @@ data "aws_iam_policy_document" "deploy_assume" {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
+        # Immutable numeric-ID form — what GitHub actually issues for repos
+        # created after mid-2026 (fleet incident 2026-07-17; see the pondview
+        # entry in environments/dev/main.tf). This is the pair that matches.
+        "repo:${var.github_org}@${var.github_org_id}/${var.rules_repo}@${var.rules_repo_id}:ref:refs/heads/main",
+        "repo:${var.github_org}@${var.github_org_id}/${var.rules_repo}@${var.rules_repo_id}:pull_request",
+        # Plain-name form, kept so the trust also holds if GitHub ever issues it.
         "repo:${var.github_org}/${var.rules_repo}:ref:refs/heads/main",
         "repo:${var.github_org}/${var.rules_repo}:pull_request",
       ]
