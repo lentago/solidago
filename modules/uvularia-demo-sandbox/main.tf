@@ -54,7 +54,14 @@ locals {
   # boundary policy is built from the deploy policy document.
   boundary_arn = "arn:aws:iam::${var.aws_account_id}:policy/${local.boundary}"
 
+  # The fence's own three IAM objects. The deploy role must never be able to
+  # rewrite these (CodeRabbit finding on #196: the uvularia-demo-* prefix glob
+  # matched them, so the role could have replaced its own boundary with *:*).
+  deploy_role_arn   = "arn:aws:iam::${var.aws_account_id}:role/${local.deploy_role}"
+  deploy_policy_arn = "arn:aws:iam::${var.aws_account_id}:policy/${local.deploy_role}"
+
   # Remote-state targets — the ONLY solidago-owned things the role may touch.
+  state_bucket_arn = "arn:aws:s3:::${local.state_bucket}"
   state_object_arn = "arn:aws:s3:::${local.state_bucket}/${local.state_key}"
   lock_table_arn   = "arn:aws:dynamodb:${var.aws_region}:${var.aws_account_id}:table/${local.lock_table}"
   # Terraform's S3+DynamoDB backend writes two lock items for a state key: the
@@ -140,6 +147,21 @@ data "aws_iam_policy_document" "deploy" {
     actions   = ["s3:GetObject", "s3:PutObject"]
     resources = [local.state_object_arn]
   }
+
+  # The S3 backend lists the bucket before it reads or writes the state object;
+  # without ListBucket a missing object reads as 403 and init fails. Scoped to
+  # this state's prefix only.
+  statement {
+    sid       = "TerraformStateList"
+    actions   = ["s3:ListBucket"]
+    resources = [local.state_bucket_arn]
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["${local.state_key}", "${local.state_key}*", "uvularia-demo/*"]
+    }
+  }
+
 
   statement {
     sid = "TerraformStateKMS"
@@ -235,6 +257,54 @@ data "aws_iam_policy_document" "deploy" {
       test     = "StringEquals"
       variable = "iam:PassedToService"
       values   = ["lambda.amazonaws.com"]
+    }
+  }
+
+  # --- The fence protects itself -------------------------------------------
+  # Explicit Deny beats every Allow above, and because the boundary is composed
+  # from this document the same denies bind every role the demo creates.
+  statement {
+    sid    = "DenyRewritingTheFence"
+    effect = "Deny"
+    actions = [
+      "iam:AttachRolePolicy",
+      "iam:DetachRolePolicy",
+      "iam:PutRolePolicy",
+      "iam:DeleteRolePolicy",
+      "iam:UpdateRole",
+      "iam:UpdateRoleDescription",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:DeleteRole",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:PutRolePermissionsBoundary",
+      "iam:DeleteRolePermissionsBoundary",
+      "iam:CreatePolicyVersion",
+      "iam:DeletePolicyVersion",
+      "iam:SetDefaultPolicyVersion",
+      "iam:DeletePolicy",
+      "iam:TagPolicy",
+      "iam:UntagPolicy",
+    ]
+    resources = [local.deploy_role_arn, local.deploy_policy_arn, local.boundary_arn]
+  }
+
+  # No demo role may ever shed its boundary, or swap it for another one.
+  statement {
+    sid       = "DenyRemovingAnyBoundary"
+    effect    = "Deny"
+    actions   = ["iam:DeleteRolePermissionsBoundary"]
+    resources = [local.role_arn_glob]
+  }
+  statement {
+    sid       = "DenySwappingTheBoundary"
+    effect    = "Deny"
+    actions   = ["iam:PutRolePermissionsBoundary", "iam:CreateRole"]
+    resources = [local.role_arn_glob]
+    condition {
+      test     = "StringNotEquals"
+      variable = "iam:PermissionsBoundary"
+      values   = [local.boundary_arn]
     }
   }
 
