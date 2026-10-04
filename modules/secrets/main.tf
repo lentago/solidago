@@ -78,6 +78,8 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
 # The token is an Axiom ingest-only token scoped to the cjp-solidago-ecs
 # dataset. Rotation = put a new secret value, then force a new deployment.
 resource "aws_secretsmanager_secret" "axiom_ingest" {
+  count = var.axiom_enabled ? 1 : 0
+
   name        = "${var.project}-${var.environment}-axiom-ingest-header"
   description = "Fluent Bit header line for FireLens -> Axiom log shipping (Authorization Bearer <ingest token>)"
   kms_key_id  = var.kms_key_arn
@@ -88,7 +90,9 @@ resource "aws_secretsmanager_secret" "axiom_ingest" {
 }
 
 resource "aws_secretsmanager_secret_version" "axiom_ingest" {
-  secret_id     = aws_secretsmanager_secret.axiom_ingest.id
+  count = var.axiom_enabled ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.axiom_ingest[0].id
   secret_string = "PLACEHOLDER-set-out-of-band"
 
   lifecycle {
@@ -111,6 +115,8 @@ resource "aws_secretsmanager_secret_version" "axiom_ingest" {
 # Ingest-only token scoped to cjp-solidago-alb. Set out-of-band; never via
 # Terraform (the version below is a placeholder, and secret_string is ignored).
 resource "aws_secretsmanager_secret" "axiom_alb_ingest" {
+  count = var.axiom_enabled ? 1 : 0
+
   name        = "${var.project}-${var.environment}-axiom-alb-ingest-header"
   description = "BARE Axiom ingest token for the ALB access-log -> Axiom Lambda shipper (cjp-solidago-alb dataset). Not the Fluent Bit header form."
   kms_key_id  = var.kms_key_arn
@@ -121,10 +127,35 @@ resource "aws_secretsmanager_secret" "axiom_alb_ingest" {
 }
 
 resource "aws_secretsmanager_secret_version" "axiom_alb_ingest" {
-  secret_id     = aws_secretsmanager_secret.axiom_alb_ingest.id
+  count = var.axiom_enabled ? 1 : 0
+
+  secret_id     = aws_secretsmanager_secret.axiom_alb_ingest[0].id
   secret_string = "PLACEHOLDER-set-out-of-band"
 
   lifecycle {
     ignore_changes = [secret_string]
   }
+}
+
+# Adding count to the Axiom secrets (#188) shifted their addresses to [0].
+# Tell Terraform they moved rather than destroy+recreate the live secrets
+# (whose out-of-band values Terraform never holds).
+moved {
+  from = aws_secretsmanager_secret.axiom_ingest
+  to   = aws_secretsmanager_secret.axiom_ingest[0]
+}
+
+moved {
+  from = aws_secretsmanager_secret_version.axiom_ingest
+  to   = aws_secretsmanager_secret_version.axiom_ingest[0]
+}
+
+moved {
+  from = aws_secretsmanager_secret.axiom_alb_ingest
+  to   = aws_secretsmanager_secret.axiom_alb_ingest[0]
+}
+
+moved {
+  from = aws_secretsmanager_secret_version.axiom_alb_ingest
+  to   = aws_secretsmanager_secret_version.axiom_alb_ingest[0]
 }

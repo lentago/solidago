@@ -108,9 +108,9 @@ Everything you need, in one list. No hunting through other repos.
   - **Anthropic API key** — powers the optional "Ask the Wiki" Lambda; leave it
     blank and the Lambda deploys in a degraded state (returns 502) instead of
     failing.
-  - **Axiom** — the reference stack ships container and ALB logs to an Axiom
-    dataset. This one isn't parameterized behind an on/off flag yet; see the
-    [Swap list](#swap-list).
+  - **Axiom** — set `axiom_ecs_dataset` / `axiom_alb_dataset` to ship
+    container logs (FireLens) and ALB access logs (shipper Lambda) to Axiom;
+    leave both `""` to skip it — the ECS tasks then log straight to CloudWatch.
 
 > **Heads up — this costs real money.** **~$130/month running
 > continuously**, dominated by the two NAT gateways (~$65/mo combined). Other
@@ -159,20 +159,20 @@ points at the tracking issue.
 | Ours | Where it lives | Put yours here | Tracked |
 |---|---|---|---|
 | AWS account `365184644049` (state bucket suffix + state CMK ARN) | `environments/dev/backend.tf:3,12` | Your 12-digit account ID | mechanical |
-| AWS account `365184644049` (Terraform-pipeline role ARN, ×2) | `.github/workflows/terraform.yml:98,194` | Your account ID | mechanical |
+| AWS account `365184644049` (Terraform-pipeline role ARN, ×2) | `.github/workflows/terraform.yml:102,202` | Your account ID | mechanical |
 | Cross-account role ARN in a code comment (drosera's `homelab-observability` role) | `modules/iam/main.tf:516` | Delete — it documents a fleet cross-repo arrangement you don't have | mechanical |
 | `solidago-*` resource naming (state bucket, CMK alias, all AWS resource names) | driven by `project` in `terraform.tfvars`; bucket/alias also in `environments/dev/backend.tf` and `scripts/bootstrap/bootstrap-backend.sh` | Your project short-name (keep it consistent across all three places) | mechanical |
-| Primary domain `icecreamtofightwith.com` + wildcard `*.icecreamtofightwith.com` | `environments/dev/main.tf:161,163` (`module.dns`) | Your registered domain | mechanical |
-| Apex site `lentago.dev` and its Fastmail MX/DKIM/SPF/DMARC + Google/GitHub verification tokens | `environments/dev/main.tf:319–366` (`module.lentago_domain`) | Delete the whole module block — this is our landing site, not yours | mechanical |
-| Apex site `pondviewlane.com` + Google token + DMARC | `environments/dev/main.tf:455–485` (`module.pondview_domain`) | Delete the block | mechanical |
-| Second apex `essexcrossingatmontserrat.com` fronting the same backend | `environments/dev/main.tf:503–530` (`module.essexcrossing_domain`) | Delete the block | mechanical |
-| Extra site backends `module.site_lentago` / `module.site_pondview` / `module.ask_pondview` | `environments/dev/main.tf:250–330,374–450` | Delete the blocks (or adapt one as a template for your own second site) | mechanical |
-| CORS origins `https://pondviewlane.com,https://essexcrossingatmontserrat.com` | `environments/dev/main.tf:438` (`module.ask_pondview`) | N/A once the Ask module is deleted; else your site origins | mechanical |
+| Primary domain `icecreamtofightwith.com` + wildcard `*.icecreamtofightwith.com` | `environments/dev/main.tf:174,176` (`module.dns`) | Your registered domain | mechanical |
+| Apex site `lentago.dev` and its Fastmail MX/DKIM/SPF/DMARC + Google/GitHub verification tokens | `environments/dev/main.tf:340–387` (`module.lentago_domain`) | Delete the whole module block — this is our landing site, not yours | mechanical |
+| Apex site `pondviewlane.com` + Google token + DMARC | `environments/dev/main.tf:476–506` (`module.pondview_domain`) | Delete the block | mechanical |
+| Second apex `essexcrossingatmontserrat.com` fronting the same backend | `environments/dev/main.tf:524–551` (`module.essexcrossing_domain`) | Delete the block | mechanical |
+| Extra site backends `module.site_lentago` / `module.site_pondview` / `module.ask_pondview` | `environments/dev/main.tf:271–351,395–471` | Delete the blocks (or adapt one as a template for your own second site) | mechanical |
+| CORS origins `https://pondviewlane.com,https://essexcrossingatmontserrat.com` | `environments/dev/main.tf:459` (`module.ask_pondview`) | N/A once the Ask module is deleted; else your site origins | mechanical |
 | Hand-allocated ALB listener-rule priorities `110/120/130/140/150` | `environments/dev/main.tf` (`listener_rule_priority` on each site/apex module) | Keep each priority unique per rule you retain; there is no auto-allocator | mechanical |
-| GitHub org `lentago` + workload repos (`site-icecreamtofightwith-com`, `site-lentago-dev`, immutable `lentago@…/site-pondviewlane-com@…`) | `environments/dev/main.tf:85–133` (`module.iam` inputs) | Your org and your workload repo name(s) — this is the OIDC deploy trust | mechanical |
+| GitHub org `lentago` + workload repos (`site-icecreamtofightwith-com`, `site-lentago-dev`, immutable `lentago@…/site-pondviewlane-com@…`) | `environments/dev/main.tf:98–146` (`module.iam` inputs) | Your org and your workload repo name(s) — this is the OIDC deploy trust | mechanical |
 | Cross-repo tfstate role `dotgithub-github-actions-terraform` trusting `lentago/.github` | `modules/iam/main.tf:~500–560` + `dotgithub_repo` input | Delete if you have no shared-workflows repo needing state access | mechanical |
 | Terraform-pipeline OIDC trust `repo:<org>/solidago:environment:terraform` | created by hand in the drill; see BOOTSTRAP Step 7 | Your org/repo | mechanical |
-| Axiom datasets `cjp-solidago-ecs` / `cjp-solidago-alb` + the FireLens sidecar and ALB-log shipper wiring | `environments/dev/main.tf:180–224,270,379` and `module.secrets` | Requires an Axiom account, or delete the `axiom_*` inputs + `module.alb_log_shipper` by hand | **structural** — there is no skip flag yet, unlike Grafana Cloud. Tracked in [#188](https://github.com/lentago/solidago/issues/188) |
+| Axiom datasets `cjp-solidago-ecs` / `cjp-solidago-alb` (FireLens sidecars, ingest secrets, ALB-log shipper) | `axiom_ecs_dataset` / `axiom_alb_dataset` in `terraform.tfvars`; our values are set in `.github/workflows/terraform.yml:89–90,189–190` | Delete those two workflow lines and leave both variables `""` to skip Axiom (apps log to CloudWatch via plain awslogs, no shipper Lambda); or set your own datasets and populate the two ingest secrets out-of-band | mechanical — optional since [#188](https://github.com/lentago/solidago/issues/188), like Grafana Cloud |
 | Monthly budget threshold `$100` | `environments/dev/main.tf` (`module.budgets`) | Your budget | mechanical |
 
 **On plan cleanliness:** our own repo's CI plans are *not* clean — three ECS
@@ -196,7 +196,7 @@ assumes the one before it worked.
 | 1 | Install the tools. `terraform version`, `aws --version`, `gh --version`, `git --version`. | Terraform reports **≥ 1.10**; AWS CLI reports **v2**; all four print a version. | |
 | 2 | Fork/clone the repo and `cd solidago`. | `git remote -v` shows your fork. | |
 | 3 | `cp environments/dev/terraform.tfvars.example environments/dev/terraform.tfvars` and fill in the [Intake](#intake) values. | `grep -R "change-me" environments/dev/terraform.tfvars` returns **nothing**. | |
-| 4 | Work the [Swap list](#swap-list): replace the account ID, domain, and GitHub org; delete the extra site/apex/Axiom blocks you don't want. | `grep -R "365184644049\|icecreamtofightwith\.com\|cjp-solidago" environments .github` returns only your values (or nothing). | |
+| 4 | Work the [Swap list](#swap-list): replace the account ID, domain, and GitHub org; delete the extra site/apex blocks you don't want (Axiom is a variable, not a block). | `grep -R "365184644049\|icecreamtofightwith\.com\|cjp-solidago" environments .github` returns only your values (or nothing). | |
 | 5 | Validate locally, no backend, no AWS calls: `cd environments/dev && terraform init -backend=false && terraform validate`. | Prints **"Success! The configuration is valid."** | |
 | 6 | Bootstrap the state backend (first AWS touch; a bucket + a KMS key, pennies): `./scripts/bootstrap/bootstrap-backend.sh`, then set your account ID in `environments/dev/backend.tf`. | `aws s3 ls s3://<YOUR_PROJECT>-tfstate-<YOUR_ACCOUNT_ID>` succeeds. | |
 | 7 | Real init + plan: `terraform init` then `terraform plan`. | Plan completes and shows **only creates** (a fresh account has no drift — see #184). | |

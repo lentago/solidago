@@ -40,6 +40,17 @@ locals {
   # plan-time error) and the grafana_cloudwatch_role_arn output (a validate
   # error: "Output refers to sensitive values").
   grafana_cloud_enabled = var.grafana_cloud_account_id != "" && nonsensitive(var.grafana_cloud_external_id != "")
+
+  # Both Axiom datasets must be non-empty to enable log shipping to Axiom.
+  # Leave either blank to skip it: the ingest secrets and the ALB-log shipper
+  # are not created, and the ECS task definitions drop the FireLens sidecar and
+  # log to their CloudWatch groups via plain awslogs instead (#188).
+  axiom_enabled = var.axiom_ecs_dataset != "" && var.axiom_alb_dataset != ""
+
+  # Per-module FireLens inputs: empty strings switch modules/ecs and
+  # modules/site to the awslogs fallback.
+  axiom_ecs_dataset      = local.axiom_enabled ? var.axiom_ecs_dataset : ""
+  axiom_ecs_token_secret = local.axiom_enabled ? module.secrets.axiom_ingest_secret_arn : ""
 }
 
 module "vpc" {
@@ -81,6 +92,8 @@ module "secrets" {
   environment = var.environment
   project     = var.project
   kms_key_arn = module.kms.key_arn
+
+  axiom_enabled = local.axiom_enabled
 }
 module "iam" {
   source = "../../modules/iam"
@@ -136,7 +149,7 @@ module "iam" {
 
   # Observability fabric Phase 2: the execution role reads the FireLens ->
   # Axiom ingest header at container start.
-  additional_execution_secret_arns = [module.secrets.axiom_ingest_secret_arn]
+  additional_execution_secret_arns = local.axiom_enabled ? [module.secrets.axiom_ingest_secret_arn] : []
 }
 module "security_groups" {
   source = "../../modules/security-groups"
@@ -189,6 +202,7 @@ module "alb" {
 # shipper code; this repo owns the AWS moving parts (Lambda, IAM, notification),
 # mirroring how it owns the ECS FireLens sidecars for the ECS emitter.
 module "alb_log_shipper" {
+  count  = local.axiom_enabled ? 1 : 0
   source = "../../modules/alb-log-shipper"
 
   project     = var.project
@@ -202,7 +216,7 @@ module "alb_log_shipper" {
   # dataset for the S3-based ALB access-log source. The token is the BARE
   # form the Python shipper expects (see modules/secrets), not the FireLens
   # header form used by module.ecs.
-  axiom_dataset          = "cjp-solidago-alb"
+  axiom_dataset          = var.axiom_alb_dataset
   axiom_token_secret_arn = module.secrets.axiom_alb_ingest_secret_arn
 
   # The module resolves the token by reading the secret's current *version*
@@ -211,14 +225,21 @@ module "alb_log_shipper" {
   # module on module.secrets to guarantee the placeholder version exists first.
   depends_on = [module.secrets]
 }
+
+# Adding count to module.alb_log_shipper (#188) shifted its address to [0];
+# same no-op state rename as module.grafana_cloud below.
+moved {
+  from = module.alb_log_shipper
+  to   = module.alb_log_shipper[0]
+}
 module "ecs" {
   source = "../../modules/ecs"
 
   # Observability fabric Phase 2: container logs -> Axiom via FireLens
   # (betula archive plane; one shared dataset, services distinguished by the
   # ecs metadata FireLens stamps on every event).
-  axiom_dataset          = "cjp-solidago-ecs"
-  axiom_token_secret_arn = module.secrets.axiom_ingest_secret_arn
+  axiom_dataset          = local.axiom_ecs_dataset
+  axiom_token_secret_arn = local.axiom_ecs_token_secret
 
   project     = var.project
   environment = var.environment
@@ -268,8 +289,8 @@ module "site_lentago" {
   # Observability fabric Phase 2: container logs -> Axiom via FireLens
   # (betula archive plane; one shared dataset, services distinguished by the
   # ecs metadata FireLens stamps on every event).
-  axiom_dataset          = "cjp-solidago-ecs"
-  axiom_token_secret_arn = module.secrets.axiom_ingest_secret_arn
+  axiom_dataset          = local.axiom_ecs_dataset
+  axiom_token_secret_arn = local.axiom_ecs_token_secret
 
   project     = var.project
   environment = var.environment
@@ -376,8 +397,8 @@ module "site_pondview" {
 
   # Observability fabric Phase 2: container logs -> Axiom via FireLens, same
   # shared dataset as the other sites (distinguished by ECS metadata).
-  axiom_dataset          = "cjp-solidago-ecs"
-  axiom_token_secret_arn = module.secrets.axiom_ingest_secret_arn
+  axiom_dataset          = local.axiom_ecs_dataset
+  axiom_token_secret_arn = local.axiom_ecs_token_secret
 
   project     = var.project
   environment = var.environment

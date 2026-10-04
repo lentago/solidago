@@ -247,7 +247,7 @@ output "grafana_cloudwatch_role_arn" {
 }
 
 output "axiom_ingest_secret_arn" {
-  description = "Secret to populate out-of-band with: Authorization Bearer <axiom ingest token> (FireLens -> Axiom)"
+  description = "Secret to populate out-of-band with: Authorization Bearer <axiom ingest token> (FireLens -> Axiom); null when Axiom is disabled"
   value       = module.secrets.axiom_ingest_secret_arn
 }
 
@@ -257,13 +257,13 @@ output "alb_access_logs_bucket" {
 }
 
 output "axiom_alb_ingest_secret_arn" {
-  description = "Secret to populate out-of-band with the BARE Axiom ingest token (AXIOM_API_TOKEN) for the ALB access-log -> Axiom Lambda shipper — NOT the FireLens 'Authorization Bearer <token>' header form."
+  description = "Secret to populate out-of-band with the BARE Axiom ingest token (AXIOM_API_TOKEN) for the ALB access-log -> Axiom Lambda shipper — NOT the FireLens 'Authorization Bearer <token>' header form. Null when Axiom is disabled."
   value       = module.secrets.axiom_alb_ingest_secret_arn
 }
 
 output "alb_log_shipper_function_name" {
-  description = "Name of the Lambda that ships ALB access logs from S3 to Axiom (module.alb_log_shipper)."
-  value       = module.alb_log_shipper.function_name
+  description = "Name of the Lambda that ships ALB access logs from S3 to Axiom (module.alb_log_shipper); null when Axiom is disabled."
+  value       = local.axiom_enabled ? module.alb_log_shipper[0].function_name : null
 }
 
 # --- uvularia demo sandbox (issue #195) ---

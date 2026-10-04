@@ -49,3 +49,19 @@ grafana_cloud_external_id = ""
 # returns 502 until the key is set). Supply via the ANTHROPIC_API_KEY Actions
 # secret in CI — never commit the real key.
 anthropic_api_key = ""
+
+# ── Axiom log shipping (optional) ─────────────────────────────────────────────
+# Leave both blank ("") to skip Axiom entirely. When blank, Terraform creates no
+# Axiom ingest secrets and no ALB-log shipper Lambda (module.alb_log_shipper),
+# and the ECS task definitions drop the FireLens sidecar: each app container
+# logs straight to its CloudWatch log group via the awslogs driver instead.
+# When both are set, container logs ship to Axiom via FireLens and ALB access
+# logs via the shipper Lambda; after the first apply, populate the two ingest
+# secrets out-of-band (see the axiom_*_secret_arn outputs and modules/secrets).
+# The reference stack sets these in .github/workflows/terraform.yml.
+
+# Axiom dataset for ECS container logs (reference stack: "cjp-solidago-ecs").
+axiom_ecs_dataset = ""
+
+# Axiom dataset for ALB access logs (reference stack: "cjp-solidago-alb").
+axiom_alb_dataset = ""
