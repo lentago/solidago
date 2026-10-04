@@ -15,7 +15,7 @@ This guide walks through deploying the solidago stack (AWS resources and the Ter
 - An AWS account with root/admin access
 - A registered domain (this guide uses `icecreamtofightwith.com` as the example)
 - [Terraform](https://developer.hashicorp.com/terraform/install) installed locally (or [tfswitch](https://tfswitch.warrensbox.com/) for version management)
-- [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configured with a named profile
+- [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configured with credentials
 - A GitHub account and the [GitHub CLI](https://cli.github.com/) installed
 - Git configured with your identity
 
@@ -29,10 +29,10 @@ If you're using an existing account, skip to Step 2.
 2. Enable MFA on the root user (Security Credentials → MFA)
 3. Create an IAM user or SSO identity for day-to-day work — avoid using root
 
-Configure the AWS CLI with a named profile:
+Configure the AWS CLI with your credentials:
 
 ```bash
-aws configure --profile foundry
+aws configure
 # Region: us-east-1
 # Output: json
 ```
@@ -40,8 +40,10 @@ aws configure --profile foundry
 Verify access:
 
 ```bash
-aws sts get-caller-identity --profile foundry
+aws sts get-caller-identity
 ```
+
+If you prefer to use a named profile instead of the default credentials, pass `--profile <name>` to these commands and export `AWS_PROFILE=<name>` in your shell before running subsequent steps.
 
 Note your **Account ID** from the output. You'll need it throughout this guide. The examples below use `<ACCOUNT_ID>` as a placeholder — replace with yours.
 
@@ -56,7 +58,6 @@ The `scripts/bootstrap/bootstrap-backend.sh` script performs all of these steps
 manual sequence:
 
 ```bash
-export AWS_PROFILE=foundry
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # S3 bucket for state files
@@ -72,7 +73,7 @@ aws s3api put-bucket-versioning \
 # key — see the note below). Root-only key policy; IAM policies authorize
 # the CI roles.
 KEY_ID=$(aws kms create-key \
-  --description "foundry Terraform state bucket encryption key" \
+  --description "solidago Terraform state bucket encryption key" \
   --tags TagKey=Name,TagValue=solidago-tfstate-key \
   --policy '{
     "Version": "2012-10-17",
@@ -179,7 +180,6 @@ This first apply runs from your local machine using your AWS CLI profile. It cre
 
 ```bash
 cd environments/dev
-export AWS_PROFILE=foundry
 
 terraform init
 terraform plan
@@ -384,7 +384,6 @@ The most expensive resources are RDS, ElastiCache, NAT Gateways, and the ALB. To
 
 ```bash
 cd environments/dev
-export AWS_PROFILE=foundry
 terraform destroy
 ```
 
