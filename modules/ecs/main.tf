@@ -30,6 +30,113 @@ resource "aws_ecs_cluster" "this" {
   }
 }
 
+# --- Container definitions ---
+# Axiom log shipping is optional (#188): an empty axiom_dataset drops the
+# FireLens sidecar and falls back to plain awslogs. jsonencode sorts object
+# keys, so assembling the app container with merge() renders byte-identically
+# to a single literal.
+locals {
+  axiom_enabled = var.axiom_dataset != ""
+
+  app_container = {
+    name      = "${var.project}-${var.environment}-app"
+    image     = "${var.ecr_repository_url}:${var.container_image_tag}"
+    essential = true
+
+    # AWS returns these defaults populated on the registered task definition;
+    # render them explicitly so the jsonencode matches the stored form and
+    # container_definitions doesn't force a replacement on every plan (#124).
+    environment    = []
+    mountPoints    = []
+    systemControls = []
+    volumesFrom    = []
+
+    portMappings = [
+      {
+        containerPort = var.container_port
+        hostPort      = var.container_port
+        protocol      = "tcp"
+      }
+    ]
+  }
+
+  # Ship container stdout/stderr to Axiom via the FireLens sidecar below
+  # (observability fabric Phase 2 — logs belong to the archive plane,
+  # betula/Axiom, per drosera's contract + ADR-0001; CloudWatch keeps only
+  # the router's own logs). Header (Authorization Bearer <token>) is
+  # injected from Secrets Manager at container start, never in the task
+  # definition JSON.
+  firelens_log_configuration = {
+    logDriver = "awsfirelens"
+    options = {
+      "Name"             = "http"
+      "Host"             = var.axiom_host
+      "Port"             = "443"
+      "URI"              = "/v1/datasets/${var.axiom_dataset}/ingest"
+      "Format"           = "json_lines"
+      "tls"              = "on"
+      "compress"         = "gzip"
+      "json_date_key"    = "_time"
+      "json_date_format" = "iso8601"
+    }
+    secretOptions = [
+      {
+        name      = "header"
+        valueFrom = var.axiom_token_secret_arn
+      }
+    ]
+  }
+
+  # Axiom disabled: the app logs straight to the CloudWatch group.
+  awslogs_log_configuration = {
+    logDriver = "awslogs"
+    options = {
+      "awslogs-group"         = aws_cloudwatch_log_group.app.name
+      "awslogs-region"        = var.aws_region
+      "awslogs-stream-prefix" = "app"
+    }
+  }
+
+  # FireLens log router: Fluent Bit sidecar that receives the app
+  # container's stdout/stderr and runs the HTTP output above.
+  # enable-ecs-log-metadata stamps ecs_cluster / ecs_task_arn /
+  # container_name onto every event. essential=true per AWS guidance —
+  # a dead router would otherwise silently drop all logs.
+  log_router_container = {
+    name      = "log-router"
+    image     = var.firelens_image
+    essential = true
+
+    # Stored-form defaults, as on the app container above (#124).
+    environment    = []
+    mountPoints    = []
+    systemControls = []
+    volumesFrom    = []
+    portMappings   = []
+    user           = "0"
+
+    firelensConfiguration = {
+      type = "fluentbit"
+      options = {
+        "enable-ecs-log-metadata" = "true"
+      }
+    }
+
+    memoryReservation = 50
+
+    # The router's own diagnostics go to CloudWatch (the one log stream
+    # that must not depend on the router itself).
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.app.name
+        "awslogs-region"        = var.aws_region
+        "awslogs-stream-prefix" = "firelens"
+      }
+    }
+  }
+}
+
 # --- Task Definition ---
 # The blueprint for what to run. This defines one container running
 # the nginx image from our ECR repo.
@@ -62,95 +169,22 @@ resource "aws_ecs_task_definition" "app" {
       )
       error_message = "task_memory ${var.task_memory} MiB is not a valid Fargate pairing for task_cpu ${var.task_cpu} (see the AWS task CPU/memory table)"
     }
+
+    precondition {
+      condition     = !local.axiom_enabled || var.axiom_token_secret_arn != ""
+      error_message = "axiom_token_secret_arn is required when axiom_dataset is set (FireLens needs the ingest header secret)."
+    }
   }
 
-  container_definitions = jsonencode([
-    {
-      name      = "${var.project}-${var.environment}-app"
-      image     = "${var.ecr_repository_url}:${var.container_image_tag}"
-      essential = true
-
-      # AWS returns these defaults populated on the registered task definition;
-      # render them explicitly so the jsonencode matches the stored form and
-      # container_definitions doesn't force a replacement on every plan (#124).
-      environment    = []
-      mountPoints    = []
-      systemControls = []
-      volumesFrom    = []
-
-      portMappings = [
-        {
-          containerPort = var.container_port
-          hostPort      = var.container_port
-          protocol      = "tcp"
-        }
-      ]
-
-      # Ship container stdout/stderr to Axiom via the FireLens sidecar below
-      # (observability fabric Phase 2 — logs belong to the archive plane,
-      # betula/Axiom, per drosera's contract + ADR-0001; CloudWatch keeps only
-      # the router's own logs). Header (Authorization Bearer <token>) is
-      # injected from Secrets Manager at container start, never in the task
-      # definition JSON.
-      logConfiguration = {
-        logDriver = "awsfirelens"
-        options = {
-          "Name"             = "http"
-          "Host"             = var.axiom_host
-          "Port"             = "443"
-          "URI"              = "/v1/datasets/${var.axiom_dataset}/ingest"
-          "Format"           = "json_lines"
-          "tls"              = "on"
-          "compress"         = "gzip"
-          "json_date_key"    = "_time"
-          "json_date_format" = "iso8601"
-        }
-        secretOptions = [
-          {
-            name      = "header"
-            valueFrom = var.axiom_token_secret_arn
-          }
-        ]
-      }
-    },
-    {
-      # FireLens log router: Fluent Bit sidecar that receives the app
-      # container's stdout/stderr and runs the HTTP output above.
-      # enable-ecs-log-metadata stamps ecs_cluster / ecs_task_arn /
-      # container_name onto every event. essential=true per AWS guidance —
-      # a dead router would otherwise silently drop all logs.
-      name      = "log-router"
-      image     = var.firelens_image
-      essential = true
-
-      # Stored-form defaults, as on the app container above (#124).
-      environment    = []
-      mountPoints    = []
-      systemControls = []
-      volumesFrom    = []
-      portMappings   = []
-      user           = "0"
-
-      firelensConfiguration = {
-        type = "fluentbit"
-        options = {
-          "enable-ecs-log-metadata" = "true"
-        }
-      }
-
-      memoryReservation = 50
-
-      # The router's own diagnostics go to CloudWatch (the one log stream
-      # that must not depend on the router itself).
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.app.name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "firelens"
-        }
-      }
-    }
+  # Axiom on: app logs via FireLens + the log-router sidecar. Axiom off: no
+  # sidecar, app logs straight to the CloudWatch group above. Two whole strings
+  # rather than one conditional object, so neither branch has to type-unify
+  # with the other (and the enabled branch renders exactly as before).
+  container_definitions = local.axiom_enabled ? jsonencode([
+    merge(local.app_container, { logConfiguration = local.firelens_log_configuration }),
+    local.log_router_container,
+    ]) : jsonencode([
+    merge(local.app_container, { logConfiguration = local.awslogs_log_configuration }),
   ])
 
   tags = {

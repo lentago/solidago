@@ -164,13 +164,15 @@ variable "axiom_host" {
 }
 
 variable "axiom_dataset" {
-  description = "Axiom dataset receiving this site's container logs (betula archive plane)"
+  description = "Axiom dataset receiving this site's container logs (betula archive plane). Empty disables Axiom: no FireLens sidecar, the app container logs to its CloudWatch group via awslogs instead."
   type        = string
+  default     = ""
 }
 
 variable "axiom_token_secret_arn" {
-  description = "Secrets Manager ARN holding the Fluent Bit header line (Authorization Bearer <axiom ingest token>) injected into the FireLens output"
+  description = "Secrets Manager ARN holding the Fluent Bit header line (Authorization Bearer <axiom ingest token>) injected into the FireLens output. Required when axiom_dataset is set; ignored otherwise."
   type        = string
+  default     = ""
 }
 
 variable "firelens_image" {

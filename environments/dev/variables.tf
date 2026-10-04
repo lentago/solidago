@@ -76,3 +76,27 @@ variable "anthropic_api_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "axiom_ecs_dataset" {
+  description = <<-EOT
+    Axiom dataset receiving the ECS container logs via the FireLens sidecars
+    (module.ecs, module.site_*). The reference stack uses "cjp-solidago-ecs",
+    supplied by the terraform workflow (TF_VAR_axiom_ecs_dataset).
+    Leave empty (with axiom_alb_dataset) to skip Axiom entirely: no ingest
+    secrets, no FireLens sidecars (apps log to CloudWatch via awslogs), and no
+    ALB-log shipper (module.alb_log_shipper count = 0).
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "axiom_alb_dataset" {
+  description = <<-EOT
+    Axiom dataset the ALB access-log shipper Lambda (module.alb_log_shipper)
+    ingests into. The reference stack uses "cjp-solidago-alb", supplied by the
+    terraform workflow (TF_VAR_axiom_alb_dataset). Both Axiom datasets must be
+    set to enable the integration; leave either empty to skip it.
+  EOT
+  type        = string
+  default     = ""
+}

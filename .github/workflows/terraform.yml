@@ -84,6 +84,10 @@ jobs:
       # Anthropic key for the Essex Crossing HOA wiki's "Ask the Wiki" answer
       # Lambda (module.ask_pondview). Repo Actions secret, never committed.
       TF_VAR_anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Axiom log shipping (optional since #188; both blank = disabled). Dataset
+      # names aren't secret, so the reference stack's values live here.
+      TF_VAR_axiom_ecs_dataset: cjp-solidago-ecs
+      TF_VAR_axiom_alb_dataset: cjp-solidago-alb
     defaults:
       run:
         working-directory: environments/dev
@@ -180,6 +184,10 @@ jobs:
       # Anthropic key for the Essex Crossing HOA wiki's "Ask the Wiki" answer
       # Lambda (module.ask_pondview). Repo Actions secret, never committed.
       TF_VAR_anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Axiom log shipping (optional since #188; both blank = disabled). Dataset
+      # names aren't secret, so the reference stack's values live here.
+      TF_VAR_axiom_ecs_dataset: cjp-solidago-ecs
+      TF_VAR_axiom_alb_dataset: cjp-solidago-alb
     defaults:
       run:
         working-directory: environments/dev
