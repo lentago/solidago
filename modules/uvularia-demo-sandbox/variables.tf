@@ -83,3 +83,14 @@ variable "error_alarm_threshold" {
   type        = number
   default     = 1
 }
+
+variable "github_org_id" {
+  description = "Numeric GitHub id of the org, for the immutable OIDC subject form (repo:<org>@<id>/<repo>@<id>:...)."
+  type        = number
+  default     = 297986315
+}
+
+variable "rules_repo_id" {
+  description = "Numeric GitHub id of the rules repo, for the immutable OIDC subject form. gh api repos/<org>/<repo> --jq .id"
+  type        = number
+}
