@@ -54,9 +54,18 @@ resource "aws_ecs_task_definition" "app" {
       image     = "${var.ecr_repository_url}:${var.container_image_tag}"
       essential = true
 
+      # AWS returns these defaults populated on the registered task definition;
+      # render them explicitly so the jsonencode matches the stored form and
+      # container_definitions doesn't force a replacement on every plan (#124).
+      environment    = []
+      mountPoints    = []
+      systemControls = []
+      volumesFrom    = []
+
       portMappings = [
         {
           containerPort = var.container_port
+          hostPort      = var.container_port
           protocol      = "tcp"
         }
       ]
@@ -97,6 +106,14 @@ resource "aws_ecs_task_definition" "app" {
       name      = "log-router"
       image     = var.firelens_image
       essential = true
+
+      # Stored-form defaults, as on the app container above (#124).
+      environment    = []
+      mountPoints    = []
+      systemControls = []
+      volumesFrom    = []
+      portMappings   = []
+      user           = "0"
 
       firelensConfiguration = {
         type = "fluentbit"
