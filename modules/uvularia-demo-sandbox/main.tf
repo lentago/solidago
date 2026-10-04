@@ -375,6 +375,22 @@ data "aws_iam_policy_document" "boundary" {
     ]
     resources = [local.ssm_read_glob]
   }
+
+  # SecureString parameters are decrypted by SSM on the caller's behalf, which
+  # needs kms:Decrypt on the key behind them (the account's aws/ssm key by
+  # default). Bounded to calls made through SSM, so this grants nothing to any
+  # other KMS use. Without it the function's cold-start read of the API key is
+  # denied by this very boundary.
+  statement {
+    sid       = "KMSDecryptViaSSM"
+    actions   = ["kms:Decrypt"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["ssm.${var.aws_region}.amazonaws.com"]
+    }
+  }
 }
 
 resource "aws_iam_policy" "boundary" {
