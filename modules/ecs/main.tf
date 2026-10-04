@@ -48,6 +48,22 @@ resource "aws_ecs_task_definition" "app" {
   execution_role_arn       = var.task_execution_role_arn
   task_role_arn            = var.task_role_arn
 
+  lifecycle {
+    precondition {
+      condition = contains(
+        var.task_cpu == 256 ? [512, 1024, 2048] :
+        var.task_cpu == 512 ? range(1024, 4097, 1024) :
+        var.task_cpu == 1024 ? range(2048, 8193, 1024) :
+        var.task_cpu == 2048 ? range(4096, 16385, 1024) :
+        var.task_cpu == 4096 ? range(8192, 30721, 1024) :
+        var.task_cpu == 8192 ? range(16384, 61441, 4096) :
+        range(32768, 122881, 8192),
+        var.task_memory
+      )
+      error_message = "task_memory ${var.task_memory} MiB is not a valid Fargate pairing for task_cpu ${var.task_cpu} (see the AWS task CPU/memory table)"
+    }
+  }
+
   container_definitions = jsonencode([
     {
       name      = "${var.project}-${var.environment}-app"
