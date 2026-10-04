@@ -79,7 +79,12 @@ locals {
   ddb_arn_glob    = "arn:aws:dynamodb:${var.aws_region}:${var.aws_account_id}:table/${local.prefix}-*"
   ddb_idx_glob    = "arn:aws:dynamodb:${var.aws_region}:${var.aws_account_id}:table/${local.prefix}-*/index/*"
   ssm_read_glob   = "arn:aws:ssm:${var.aws_region}:${var.aws_account_id}:parameter/${local.prefix}/*"
-  log_arn_glob    = "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/aws/lambda/${local.prefix}-*:*"
+  # Two ARN shapes: the bare log group (what tag, retention, and delete calls
+  # name) and the group's streams (what put-events names). The ":*" form alone
+  # does not match the bare group, which denied ListTagsForResource on the first
+  # demo deploy.
+  log_group_arn_glob  = "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/aws/lambda/${local.prefix}-*"
+  log_stream_arn_glob = "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/aws/lambda/${local.prefix}-*:*"
 
   tags = { Project = "uvularia-demo" }
 }
@@ -325,7 +330,7 @@ data "aws_iam_policy_document" "deploy" {
   statement {
     sid       = "LogsManagePrefixed"
     actions   = ["logs:*"]
-    resources = [local.log_arn_glob]
+    resources = [local.log_group_arn_glob, local.log_stream_arn_glob]
   }
 
   # DescribeLogGroups is a list operation and does not support resource-level
