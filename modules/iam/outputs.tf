@@ -39,3 +39,8 @@ output "dotgithub_github_actions_terraform_role_arn" {
   description = "ARN of the lentago/.github Terraform pipeline IAM role (R19 step 1, lentago/.github#81)"
   value       = aws_iam_role.dotgithub_github_actions_terraform.arn
 }
+
+output "betula_github_actions_terraform_role_arn" {
+  description = "ARN of the lentago/betula Terraform pipeline IAM role (state key betula/terraform.tfstate; lentago/betula#118)"
+  value       = aws_iam_role.betula_github_actions_terraform.arn
+}

@@ -627,3 +627,115 @@ resource "aws_iam_role_policy_attachment" "dotgithub_github_actions_terraform" {
   role       = aws_iam_role.dotgithub_github_actions_terraform.name
   policy_arn = aws_iam_policy.dotgithub_github_actions_terraform.arn
 }
+
+# =============================================================================
+# BETULA REPO TERRAFORM PIPELINE ROLE
+#
+# lentago/betula is bringing the Axiom side of its log archive (datasets,
+# retention, ingest tokens) under Terraform (lentago/betula#118). This role
+# gives betula's CI exactly what the dotgithub role above gives lentago/.github:
+# read/write on its own state key in solidago's shared tfstate bucket, the
+# tfstate CMK, and the shared lock table. It cannot read solidago's own state,
+# any other repo's state, or any other AWS service; the Axiom provider
+# authenticates with an Axiom token held as a betula repo secret, not via AWS.
+#
+# Trust mirrors the dotgithub role: the push-to-main sub for apply, plus the
+# fixed pull_request sub for plan. betula is an established (renamed) repo, so
+# it issues the plain "repo:org/repo:..." sub form.
+# =============================================================================
+
+data "aws_iam_policy_document" "betula_github_actions_terraform_assume" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values = [
+        "repo:${var.github_org}/${var.betula_repo}:ref:refs/heads/main",
+        "repo:${var.github_org}/${var.betula_repo}:pull_request",
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "betula_github_actions_terraform" {
+  name               = "betula-github-actions-terraform"
+  assume_role_policy = data.aws_iam_policy_document.betula_github_actions_terraform_assume.json
+
+  max_session_duration = 3600
+
+  tags = {
+    Name = "betula-github-actions-terraform"
+  }
+}
+
+# Least privilege, same shape as the dotgithub role: this repo's state object,
+# the tfstate CMK (the bucket's key policy delegates to IAM), and the lock table.
+data "aws_iam_policy_document" "betula_github_actions_terraform" {
+  statement {
+    sid = "TerraformStateS3"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+    ]
+    resources = [
+      "arn:aws:s3:::solidago-tfstate-${var.aws_account_id}/betula/terraform.tfstate",
+    ]
+  }
+
+  statement {
+    sid = "TerraformStateKMS"
+    actions = [
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:GenerateDataKey",
+      "kms:DescribeKey",
+    ]
+    resources = [var.tfstate_kms_key_arn]
+  }
+
+  statement {
+    sid = "TerraformStateLock"
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:DescribeTable",
+    ]
+    resources = [
+      "arn:aws:dynamodb:${var.aws_region}:${var.aws_account_id}:table/solidago-tfstate-lock",
+    ]
+  }
+
+  statement {
+    sid       = "CallerIdentity"
+    actions   = ["sts:GetCallerIdentity"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "betula_github_actions_terraform" {
+  name   = "betula-github-actions-terraform"
+  policy = data.aws_iam_policy_document.betula_github_actions_terraform.json
+
+  tags = {
+    Name = "betula-github-actions-terraform"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "betula_github_actions_terraform" {
+  role       = aws_iam_role.betula_github_actions_terraform.name
+  policy_arn = aws_iam_policy.betula_github_actions_terraform.arn
+}

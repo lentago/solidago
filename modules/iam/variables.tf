@@ -71,6 +71,12 @@ variable "dotgithub_repo" {
   default     = ".github"
 }
 
+variable "betula_repo" {
+  description = "lentago/betula's repo name (without org prefix), whose Terraform CI may assume the betula Terraform pipeline role for its own state key (lentago/betula#118)."
+  type        = string
+  default     = "betula"
+}
+
 variable "additional_execution_secret_arns" {
   description = <<-EOT
     Extra Secrets Manager secret ARNs the ECS task EXECUTION role may read,
