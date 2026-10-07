@@ -5,6 +5,6 @@ on:
 
 jobs:
   tf-lint:
-    uses: lentago/shared-workflows/.github/workflows/tf-lint.yml@v1.2.2
+    uses: lentago/shared-workflows/.github/workflows/tf-lint.yml@v1.2.3
     with:
       working_directory: environments/dev
