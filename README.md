@@ -2,7 +2,7 @@
      Regenerate there; do not hand-edit the banner or badge URLs. -->
 <a href="https://lentago.dev"><img src="./assets/banner.svg" alt="solidago — Cloud platform · AWS, 100% Terraform" width="100%"></a>
 
-[![main](https://img.shields.io/github/check-runs/lentago/solidago/main?style=flat-square&labelColor=0e2b1a&color=1b4b2e&label=main)](https://github.com/lentago/solidago/actions) [![License](https://img.shields.io/github/license/lentago/solidago?style=flat-square&labelColor=0e2b1a&color=1b4b2e)](https://github.com/lentago/solidago/blob/main/LICENSE) [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-1b4b2e?style=flat-square&labelColor=0e2b1a&logo=readthedocs&logoColor=E0A81C)](https://deepwiki.com/lentago/solidago)
+[![main](https://img.shields.io/github/check-runs/lentago/solidago/main?style=flat-square&labelColor=0e2b1a&color=1b4b2e&label=main)](https://github.com/lentago/solidago/actions) [![License](https://img.shields.io/github/license/lentago/solidago?style=flat-square&labelColor=0e2b1a&color=1b4b2e)](https://github.com/lentago/solidago/blob/main/LICENSE)
 
 ![Terraform](https://img.shields.io/badge/Terraform-1b4b2e?style=flat-square&labelColor=0e2b1a&logo=terraform&logoColor=E0A81C) ![AWS](https://img.shields.io/badge/AWS-1b4b2e?style=flat-square&labelColor=0e2b1a&logo=amazonwebservices&logoColor=E0A81C) ![ECS Fargate](https://img.shields.io/badge/ECS%20Fargate-1b4b2e?style=flat-square&labelColor=0e2b1a) ![OIDC](https://img.shields.io/badge/OIDC-1b4b2e?style=flat-square&labelColor=0e2b1a)
 
@@ -13,22 +13,6 @@
 A Terraform-managed AWS environment built and run as our own estate — we practice what we publish. It hosts a live application at [icecreamtofightwith.com](https://icecreamtofightwith.com).
 
 **Authorship:** The Terraform, scripts, workflows, and documentation in this repo are co-written with [Claude](https://claude.ai) (Anthropic). I direct the architecture and review the output; Claude writes the code. I'm an infrastructure operator, not a software engineer — please don't read this repo as a portfolio of coding ability.
-
-## 📚 Ask this codebase (DeepWiki)
-
-<a href="https://deepwiki.com/lentago/solidago"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki" height="32"></a>
-
-> [DeepWiki](https://deepwiki.com/lentago/solidago) maintains an AI-generated wiki over this
-> repository — architecture pages, diagrams, and a Q&A box grounded in the actual code. Every
-> public Lentago Labs repo is indexed ([deepwiki.com/lentago](https://deepwiki.com/lentago));
-> it is the fastest way to orient before reading source. It is AI-generated: trust it to orient
-> you, verify against the code before you act on it.
-
-**Good first questions:**
-
-- How does the `terraform.yml` workflow's `gate` job avoid deadlocking required-status-check enforcement on docs-only PRs?
-- What is the trust-policy difference between the `solidago-dev-github-actions` and `solidago-dev-github-actions-terraform` IAM roles, and which repos/environments can assume each?
-- How would I onboard a brand-new containerized workload onto this platform's shared ECS cluster and ALB without touching the existing workloads?
 
 ## Why This Exists
 
@@ -239,5 +223,4 @@ This project is open source. See individual files for details.
 > 🌱 **Lentago Labs** is a pro-bono operations practice for organizations that
 > run on volunteers, donations, and one overworked tech person. Everything here
 > is free to take, and we practice what we publish: our own estate runs this
-> way, in the open. Start at the [org profile](https://github.com/lentago), and
-> read this repo on [DeepWiki](https://deepwiki.com/lentago/solidago).
+> way, in the open. Start at the [org profile](https://github.com/lentago).
