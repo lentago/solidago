@@ -1,4 +1,4 @@
-# AWS Infrastructure Lab — Build Plan
+# AWS Infrastructure — Build Plan
 
 ## Project Overview
 
@@ -198,7 +198,7 @@ Supporting infrastructure: VPC networking, IAM, KMS encryption, Secrets Manager,
     - Min: 2 tasks, Max: 6 tasks (keep costs bounded)
 
 ### Architectural Decisions
-- **Why Fargate over EC2?** No instance management, patching, or capacity planning. Perfect for a lab where you want to focus on architecture, not OS maintenance.
+- **Why Fargate over EC2?** No instance management, patching, or capacity planning. Perfect for an environment where you want to focus on architecture, not OS maintenance.
 - **Why 2 minimum tasks?** One per AZ ensures the app survives an AZ failure.
 
 ### Completion Criteria
@@ -227,7 +227,7 @@ Supporting infrastructure: VPC networking, IAM, KMS encryption, Secrets Manager,
     - Automated backups enabled (7-day retention minimum)
     - Credentials stored in Secrets Manager
     - Performance Insights enabled (free tier available)
-    - Instance class: `db.t3.micro` or `db.t4g.micro` for lab
+    - Instance class: `db.t3.micro` or `db.t4g.micro` for this environment
 
 22. **S3 bucket:**
     - For static assets, logs, future app storage
@@ -239,11 +239,11 @@ Supporting infrastructure: VPC networking, IAM, KMS encryption, Secrets Manager,
 23. **ElastiCache Redis cluster:**
     - Deployed in data-tier private subnets
     - Encryption in transit and at rest
-    - Single node for lab (Multi-AZ replication available if budget allows)
+    - Single node for this environment (Multi-AZ replication available if budget allows)
     - Parameter group with sensible defaults
 
 ### Architectural Decisions
-- **Why PostgreSQL?** Most versatile open-source RDBMS. Aurora is fancier but costs more; standard RDS is fine for a lab.
+- **Why PostgreSQL?** Most versatile open-source RDBMS. Aurora is fancier but costs more; standard RDS is fine for this environment.
 - **Why Redis?** Session caching, rate limiting, pub/sub — Redis is the Swiss Army knife of the data tier.
 
 ### Completion Criteria
@@ -267,7 +267,7 @@ Supporting infrastructure: VPC networking, IAM, KMS encryption, Secrets Manager,
     - ECS task logs (application output)
     - VPC Flow Logs
     - RDS slow query logs
-    - Retention policy set (e.g., 30 days for lab)
+    - Retention policy set (e.g., 30 days for this environment)
 
 25. **CloudWatch Alarms tied to SNS:**
     - ECS CPU > 80%
@@ -329,7 +329,7 @@ Supporting infrastructure: VPC networking, IAM, KMS encryption, Secrets Manager,
     - No direct pushes
 
 ### Architectural Decisions
-- **Why GitHub Actions over CodePipeline?** Free, widely understood, better developer experience. CodePipeline is AWS-native but adds cost and complexity for a lab.
+- **Why GitHub Actions over CodePipeline?** Free, widely understood, better developer experience. CodePipeline is AWS-native but adds cost and complexity for this environment.
 - **Why OIDC over IAM keys?** No secrets to rotate, no keys to leak. GitHub's identity provider is trusted by your AWS account.
 
 ### Completion Criteria

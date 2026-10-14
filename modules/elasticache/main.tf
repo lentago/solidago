@@ -10,7 +10,7 @@
 #     supports promotion to multi-node later without replacement.
 #   - Transit encryption: TLS required for all connections. Clients
 #     must use TLS-capable libraries (all modern Redis clients do).
-#   - Single node for lab: keeps costs at ~$12/mo. Add a second node
+#   - Single node here: keeps costs at ~$12/mo. Add a second node
 #     to enable automatic failover for production.
 # -------------------------------------------------------------------
 
@@ -73,7 +73,7 @@ resource "aws_elasticache_replication_group" "this" {
   node_type      = var.node_type
   port           = var.port
 
-  # Topology — single node for lab
+  # Topology — single node for this environment
   num_cache_clusters         = var.num_cache_clusters
   automatic_failover_enabled = var.num_cache_clusters > 1
   multi_az_enabled           = var.num_cache_clusters > 1

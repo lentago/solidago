@@ -18,7 +18,7 @@ resource "aws_ecr_repository" "this" {
     scan_on_push = true
   }
 
-  # Lab convention (matches modules/ecr): allow delete even with images.
+  # Convention here (matches modules/ecr): allow delete even with images.
   force_delete = true
 
   tags = {

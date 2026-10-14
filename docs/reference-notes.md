@@ -172,11 +172,11 @@ _Quick-reference for architectural decisions made along the way. Full ADRs live 
 
 | # | Decision | Rationale | Date |
 |---|----------|-----------|------|
-| 1 | AdministratorAccess on cpitzi-iac | Lab/sandbox account, sole user. Scoped permissions would create constant friction. Will scope down for CI/CD roles. | 2026-02-27 |
+| 1 | AdministratorAccess on cpitzi-iac | Sandbox account, sole user. Scoped permissions would create constant friction. Will scope down for CI/CD roles. | 2026-02-27 |
 | 2 | AES256 encryption on state bucket (not KMS yet) | Avoids KMS dependency before Phase 2. Will upgrade to CMK later. **Superseded by #35 (issue #15).** | 2026-02-27 |
 | 3 | 2 NAT Gateways (one per AZ) | Production-correct HA pattern. Accepted ~$65/mo cost over single-NAT savings. | 2026-02-27 |
-| 4 | count over for_each for VPC subnets | Simpler to learn; fine for lab. Can refactor to for_each later for better state handling. | 2026-02-27 |
-| 5 | Single KMS CMK for all encryption | $1/mo per key; lab doesn't need per-service key isolation. Key policy grants scoped to specific roles. | 2026-02-28 |
+| 4 | count over for_each for VPC subnets | Simpler to learn; fine for this environment. Can refactor to for_each later for better state handling. | 2026-02-27 |
+| 5 | Single KMS CMK for all encryption | $1/mo per key; this environment doesn't need per-service key isolation. Key policy grants scoped to specific roles. | 2026-02-28 |
 | 6 | Separate ECS task execution vs task role | Execution role = ECS control plane (image pull, logs, secrets injection). Task role = application runtime AWS access. Least-privilege separation. | 2026-02-28 |
 | 7 | GitHub OIDC over IAM access keys | No long-lived credentials. Trust scoped to repo:lentago/foundry-platform-demo:*. | 2026-02-28 |
 | 8 | Security groups as standalone module | Separation of concerns: VPC = network plumbing, SGs = access policy. Cleaner output wiring to consuming modules in Phases 3-4. | 2026-02-28 |
@@ -185,7 +185,7 @@ _Quick-reference for architectural decisions made along the way. Full ADRs live 
 | 11 | Mutable image tags in ECR for dev | Allows pushing to `latest` repeatedly without errors. Would use IMMUTABLE in production to prevent overwriting deployed tags. | 2026-02-28 |
 | 12 | DNS + ACM in single module | ACM DNS validation creates records in Route 53; tightly coupled. Separating them creates circular dependency headaches. | 2026-02-28 |
 | 13 | Boolean `create_alb_alias` over conditional count on ALB DNS name | Terraform `count` can't depend on values unknown at plan time. Explicit boolean is known at plan time, avoids the "known after apply" error. | 2026-02-28 |
-| 14 | TLS 1.2+ minimum (ELBSecurityPolicy-TLS13-1-2-2021-06) | AWS recommended policy. TLS 1.0/1.1 have known vulnerabilities. Only downside is dropping very old clients, acceptable for lab. | 2026-02-28 |
+| 14 | TLS 1.2+ minimum (ELBSecurityPolicy-TLS13-1-2-2021-06) | AWS recommended policy. TLS 1.0/1.1 have known vulnerabilities. Only downside is dropping very old clients, acceptable for this environment. | 2026-02-28 |
 | 15 | ECS lifecycle ignore_changes for task_definition and desired_count | CI/CD updates task definitions, auto-scaling changes desired count. Without ignore_changes, terraform apply would revert these external changes. | 2026-02-28 |
 | 16 | Custom nginx image for port 8080 | Stock nginx listens on 80; security groups and ALB target group expect 8080. Custom Dockerfile + nginx.conf aligns the port contract across all modules. | 2026-02-28 |
 | 17 | Fargate target_type = "ip" | Required for Fargate. Each task gets its own ENI with a private IP; ALB routes directly to task IPs rather than EC2 instance IDs. | 2026-02-28 |
@@ -203,7 +203,7 @@ _Quick-reference for architectural decisions made along the way. Full ADRs live 
 | 29 | Direct KMS encryption on CloudTrail (kms_key_id) over S3-only encryption | Defense-in-depth: logs are encrypted by CloudTrail before S3 delivery, not just at rest. Stronger portfolio signal; demonstrates KMS service principal integration. | 2026-03-19 |
 | 30 | is_multi_region_trail = true | IAM and other global services emit events in us-east-1 regardless of deployment region. Multi-region ensures complete audit coverage. | 2026-03-19 |
 | 31 | enable_log_file_validation = true | Creates hourly digest files with SHA-256 hashes for tamper detection. Required by most compliance frameworks (SOC 2, PCI DSS, HIPAA). | 2026-03-19 |
-| 32 | Management events only (no data events) | Data events (S3 object ops, Lambda invocations) would generate massive volume and cost for a lab. Management events cover the resource-level audit questions. | 2026-03-19 |
+| 32 | Management events only (no data events) | Data events (S3 object ops, Lambda invocations) would generate massive volume and cost for this environment. Management events cover the resource-level audit questions. | 2026-03-19 |
 | 33 | S3 bucket policy owned by CloudTrail module (not S3 module) | Keeps the S3 module general-purpose. The consumer (CloudTrail) manages its own access. If AWS Config also needs bucket access, we'll consolidate into a shared policy. | 2026-03-19 |
 | 34 | EncryptionContext condition (not aws:SourceArn) on KMS key policy | Avoids circular dependency: trail needs key ARN, and SourceArn condition would need trail ARN. EncryptionContext scoped to account is sufficient for single-account use. | 2026-03-19 |
 | 35 | State bucket uses a DEDICATED bootstrap-managed CMK (`alias/solidago-tfstate`), not the Terraform-managed `alias/solidago-dev-main` | Reusing the Terraform key would be circular (it's defined in the state it would encrypt) and unsafe: `terraform destroy` schedules that key for deletion, which would lock us out of state on the next teardown. The dedicated key is created outside Terraform and never destroyed. IAM (not the key policy) grants the CI roles scoped access, since those roles don't exist at bootstrap time. Closes issue #15. | 2026-07-01 |

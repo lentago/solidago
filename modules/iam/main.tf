@@ -280,7 +280,7 @@ resource "aws_iam_role" "github_actions" {
 # (which creates/modifies/destroys infrastructure) and deploys to ECS.
 # In a real org, you'd scope this more tightly — perhaps separate roles
 # for "terraform plan" (read-only) vs "terraform apply" (write).
-# For the lab, we give it the permissions it needs for Phases 3-7.
+# For this environment, we give it the permissions it needs for Phases 3-7.
 data "aws_iam_policy_document" "github_actions" {
   # ECS deployment permissions
   statement {

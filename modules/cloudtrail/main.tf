@@ -19,7 +19,7 @@
 #     haven't been tampered with — a key compliance requirement.
 #   - Management events only (no data events): Data events track individual
 #     S3 object operations and Lambda invocations, which would generate
-#     massive volume and cost for a lab. Management events cover the
+#     massive volume and cost for this environment. Management events cover the
 #     "who created/modified/deleted what resource" questions.
 #
 # NOTE: The S3 bucket policy granting CloudTrail write access is managed

@@ -16,7 +16,7 @@ resource "aws_lb" "this" {
   subnets            = var.public_subnet_ids
 
   # Prevents accidental deletion via the AWS console or API.
-  # Set to false for lab so terraform destroy works cleanly.
+  # Set to false in this environment so terraform destroy works cleanly.
   enable_deletion_protection = false
 
   # Strip headers that don't conform to RFC 7230 before they reach targets
