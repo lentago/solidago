@@ -10,7 +10,7 @@
 
 > **Solidago** (goldenrod — from *solidare*, "to make whole") is the Lentago Labs codename for the Cloud Platform service. Renamed from `foundry-platform-demo` on 2026-07-03; AWS resource names were aligned to the `solidago` codename on 2026-07-07 (issue #102), and the shared Terraform state backend was migrated from `foundry-tfstate-*` to `solidago-tfstate-*` on 2026-07-08 (issue #103).
 
-A Terraform-managed AWS environment built and run as our own estate — we practice what we publish. It hosts a live application at [icecreamtofightwith.com](https://icecreamtofightwith.com).
+A Terraform-managed AWS environment built and run as the cloud half of our own estate (everything we run, on-prem and in the cloud) — we practice what we publish. It hosts a live application at [icecreamtofightwith.com](https://icecreamtofightwith.com).
 
 **Authorship:** The Terraform, scripts, workflows, and documentation in this repo are co-written with [Claude](https://claude.ai) (Anthropic). I direct the architecture and review the output; Claude writes the code. I'm an infrastructure operator, not a software engineer — please don't read this repo as a portfolio of coding ability.
 
