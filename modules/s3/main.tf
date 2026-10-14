@@ -17,7 +17,7 @@
 # -------------------------------------------------------------------
 
 # --- The bucket ---
-# force_destroy = true in lab so terraform destroy doesn't fail on
+# force_destroy = true in this environment so terraform destroy doesn't fail on
 # non-empty buckets. In prod you'd set this to false.
 resource "aws_s3_bucket" "this" {
   bucket        = "${var.project}-${var.environment}-${data.aws_caller_identity.current.account_id}"

@@ -10,7 +10,7 @@
 
 > **Solidago** (goldenrod — from *solidare*, "to make whole") is the Lentago Labs codename for the Cloud Platform service. Renamed from `foundry-platform-demo` on 2026-07-03; AWS resource names were aligned to the `solidago` codename on 2026-07-07 (issue #102), and the shared Terraform state backend was migrated from `foundry-tfstate-*` to `solidago-tfstate-*` on 2026-07-08 (issue #103).
 
-A Terraform-managed AWS environment built and run as our own estate — we practice what we publish. It hosts a live application at [icecreamtofightwith.com](https://icecreamtofightwith.com).
+A Terraform-managed AWS environment built and run as the cloud half of our own estate (everything we run, on-prem and in the cloud) — we practice what we publish. It hosts a live application at [icecreamtofightwith.com](https://icecreamtofightwith.com).
 
 **Authorship:** The Terraform, scripts, workflows, and documentation in this repo are co-written with [Claude](https://claude.ai) (Anthropic). I direct the architecture and review the output; Claude writes the code. I'm an infrastructure operator, not a software engineer — please don't read this repo as a portfolio of coding ability.
 
@@ -18,7 +18,7 @@ A Terraform-managed AWS environment built and run as our own estate — we pract
 
 I'm an infrastructure operations professional with 25+ years of production experience — bare-metal data centers, 24x7 ops, single-homed environments where every decision had physical consequences. This project is how I learn cloud-native architecture: by specifying what I want, having Claude implement it, and then operating it with real traffic.
 
-The intent is to reflect how a production environment should be built, scaled down to a single-account learning lab. No shortcuts on security posture. No placeholder modules. Real CI/CD, real monitoring, real cost controls — but the *code* itself is Claude's, written under my direction.
+The intent is to reflect how a production environment should be built, scaled down to a single-account estate run by one person. No shortcuts on security posture. No placeholder modules. Real CI/CD, real monitoring, real cost controls — but the *code* itself is Claude's, written under my direction.
 
 ## 🧭 What this repo demonstrates
 
@@ -31,7 +31,7 @@ Patterns you can lift into your own org — each one points at the code that pro
 | **Dual IAM-role trust split** — blast-radius containment between infra and workloads | [`modules/iam`](modules/iam) + [`docs/WORKLOAD_RELATIONSHIP.md`](docs/WORKLOAD_RELATIONSHIP.md): `solidago-dev-github-actions` (workloads push to ECR/ECS) vs `solidago-dev-github-actions-terraform` (this repo mutates infra). Neither can do the other's job. |
 | **Required check that survives path-filtered CI** — no docs-only PR gets stuck forever | The `gate` job in [`terraform.yml`](.github/workflows/terraform.yml) (`needs: [changes, plan]`, `if: always()`) reports green even when the plan is skipped, so the ruleset can require exactly `gate`. |
 | **Shared reusable workflows** — cross-repo CI logic centralized, not copy-pasted | [`.github/workflows/docs-check.yml`](.github/workflows/docs-check.yml) is a thin wrapper over `uses: lentago/shared-workflows/.github/workflows/docs-check.yml@main`. |
-| **Security-by-default posture** — even in a personal-scale lab | [`modules/waf`](modules/waf) (AWS managed rule groups + rate limiting), [`modules/security-groups`](modules/security-groups) (tiered least-privilege chaining), [`modules/kms`](modules/kms) (encryption at rest). |
+| **Security-by-default posture** — even at single-account scale | [`modules/waf`](modules/waf) (AWS managed rule groups + rate limiting), [`modules/security-groups`](modules/security-groups) (tiered least-privilege chaining), [`modules/kms`](modules/kms) (encryption at rest). |
 | **Cost governance as code** — guardrails declared in Terraform, not clicked into the console | [`modules/budgets`](modules/budgets): `aws_budgets_budget` with SNS alerts at 50 / 80 / 100% thresholds. |
 | **Known-benign diffs documented, not tolerated in silence** | [`modules/ecs/main.tf`](modules/ecs/main.tf) sets `ignore_changes = [task_definition, desired_count]` so CI/CD and auto-scaling own those fields; the recurring task-definition plan entry is expected AWS normalization, not drift. |
 

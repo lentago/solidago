@@ -1,7 +1,7 @@
 # Teardown / Standup Runbook
 
 Selective, cost-saving teardown of the solidago-dev platform and how to bring it
-back. The goal: destroy the expensive always-on resources when the lab is idle,
+back. The goal: destroy the expensive always-on resources when the environment is idle,
 **without** destroying the durable foundation, so a rebuild takes minutes instead
 of the 15–20 minute (and occasionally ~75 minute) resurrection pain of a full
 `terraform destroy` / `apply`.

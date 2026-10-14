@@ -19,7 +19,7 @@ variable "kms_key_arn" {
 }
 
 variable "force_destroy" {
-  description = "Allow Terraform to delete the bucket even if it contains objects (true for lab)"
+  description = "Allow Terraform to delete the bucket even if it contains objects (true for this environment)"
   type        = bool
   default     = true
 }

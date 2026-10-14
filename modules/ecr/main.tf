@@ -13,7 +13,7 @@ resource "aws_ecr_repository" "this" {
     scan_on_push = true
   }
 
-  # Force delete even if images exist — appropriate for a lab repo
+  # Force delete even if images exist — appropriate for this environment
   # In production you'd want this false to prevent accidental deletion
   force_delete = true
 

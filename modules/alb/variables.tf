@@ -67,7 +67,7 @@ variable "access_logs_retention_days" {
 }
 
 variable "access_logs_force_destroy" {
-  description = "Allow terraform destroy to delete the access-logs bucket even when non-empty (lab convention)."
+  description = "Allow terraform destroy to delete the access-logs bucket even when non-empty (this environment's convention)."
   type        = bool
   default     = true
 }

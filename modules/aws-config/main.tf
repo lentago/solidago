@@ -122,7 +122,7 @@ resource "aws_config_configuration_recorder" "this" {
 #
 # snapshot_delivery_properties controls how often Config delivers a
 # full snapshot of all recorded resource configurations. "Six_Hours"
-# is a reasonable balance for a lab — frequent enough to catch drift,
+# is a reasonable balance for this environment — frequent enough to catch drift,
 # not so frequent that it generates excessive S3 writes.
 # -----------------------------------------------------------------------------
 

@@ -4,7 +4,7 @@
 # KMS Customer-Managed Key (CMK)
 # 
 # A single key used to encrypt: RDS, S3, Secrets Manager, CloudWatch Logs,
-# and ECS/EBS storage. One key keeps the lab simple and costs $1/month.
+# and ECS/EBS storage. One key keeps this environment simple and costs $1/month.
 #
 # KEY POLICY PRIMER:
 # Unlike most AWS resources where IAM policies are sufficient, KMS has its own

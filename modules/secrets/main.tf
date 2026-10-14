@@ -23,7 +23,7 @@
 # - RDS, Redshift, and DocumentDB have built-in rotation integrations
 # - JSON secret values (store username + password + host in one secret)
 # SSM Parameter Store is cheaper ($0 vs $0.40/secret/month) but lacks
-# the rotation machinery. For a lab demonstrating production patterns,
+# the rotation machinery. For an environment demonstrating production patterns,
 # Secrets Manager is the right choice.
 # =============================================================================
 
@@ -35,7 +35,7 @@ resource "aws_secretsmanager_secret" "db_credentials" {
   # Secrets Manager has a gotcha: deleted secrets retain their name for the
   # recovery window period. If you terraform destroy and then re-create,
   # you'll get a "already scheduled for deletion" error. A shorter window
-  # helps in a lab. Minimum is 7 days; 0 means force-delete immediately.
+  # helps in this environment. Minimum is 7 days; 0 means force-delete immediately.
   recovery_window_in_days = 7
 
   tags = {
