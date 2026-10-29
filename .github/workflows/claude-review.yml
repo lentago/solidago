@@ -1,0 +1,122 @@
+# ============================================================================
+# Claude Code — Automated PR Review (advisory)
+# ============================================================================
+# Thin wrapper around lentago/shared-workflows/claude-review.yml, per
+# lentago/.github ADR-0013. Copied from lentago/repo-template's reference
+# copy; only the review_prompt differs.
+#
+# - Runs when a PR is opened or marked ready for review, and again when it is
+#   labelled `re-review` (Haiku) or `review:sonnet` (Sonnet). It does NOT run on
+#   every push: it shares the fleet's Claude subscription with the bullpen.
+# - Advisory, never a required status check (shared-workflows ADR-0003). The
+#   gate is the arming rule: don't arm until a review has posted and every
+#   finding is triaged on the PR (shared-workflows CLAUDE.md, Auto-merge
+#   arming). A "could not complete" soft-fail comment is not a review —
+#   label `re-review`.
+# - After a labelled run, `clear-label` removes the label so adding it again
+#   triggers again.
+# - A PR that adds or changes THIS file is not reviewed by it: the Claude Code
+#   action skips unless the workflow is identical to the default branch's copy,
+#   and the reusable workflow (v1.5.0+) posts a "not a review" notice instead.
+#   Review such PRs locally and post the result as "Review (Haiku, local)"
+#   (ADR-0013 Decision 2).
+# - Dependabot PRs are skipped: Dependabot runs don't receive Actions secrets,
+#   so the required token would fail the call. Review a bump locally if it
+#   warrants one.
+# - Drafts are skipped (by the reusable workflow) and keep their trigger label
+#   until they are ready.
+# ============================================================================
+
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, labeled]
+
+jobs:
+  review:
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      github.event.pull_request.draft == false &&
+      (github.event.action != 'labeled' ||
+       github.event.label.name == 're-review' ||
+       github.event.label.name == 'review:sonnet')
+    # One review at a time per PR: a re-label during a running review queues
+    # behind it instead of posting a duplicate.
+    concurrency:
+      group: claude-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    uses: lentago/shared-workflows/.github/workflows/claude-review.yml@v1.5.0
+    secrets: inherit
+    with:
+      model: ${{ github.event.label.name == 'review:sonnet' && 'sonnet' || 'haiku' }}
+      review_prompt: |
+        This repository is lentago/solidago, a Terraform-managed three-tier AWS
+        platform (VPC, ECS Fargate behind a shared ALB, RDS, ElastiCache, WAF,
+        KMS, Secrets Manager, OIDC IAM) that hosts live sites. Everything is
+        applied from CI: the Terraform workflow plans on the PR and applies on
+        merge to main, so a merged change is a live change. Focus your review on:
+
+        - **Apply blast radius**: read the change as what `terraform apply` will
+          do. Flag anything that replaces or destroys stateful or hard-to-recreate
+          resources (RDS, ElastiCache, KMS keys, Route 53 zones, ECR repos, the
+          state backend), a weakened `prevent_destroy`, or a changed `for_each`
+          key or resource label that would move a state address. Check that the
+          `ignore_changes` patterns on the ECS service and secrets are kept.
+        - **IAM and OIDC trust**: the GitHub OIDC roles in `modules/iam` and
+          the sandbox boundary in `modules/uvularia-demo-sandbox` are the
+          security perimeter. Flag wildcard `sub` claims, trust that is looser
+          than `StringEquals` on an exact repo and ref or environment,
+          duplicate subs, `Resource: "*"` or broad actions, and any mixing of
+          the workload-deploy role with the Terraform role. Role and key
+          policies that rely on KMS grants need an explicit IAM statement too.
+        - **Network and data exposure**: rules reference security-group IDs, not
+          CIDRs; the app and data tiers stay private; the ALB listener rule
+          priorities stay unique; encryption at rest and in transit stays on;
+          WAF rules and rate limits are not loosened.
+        - **Module conventions**: each module has `main.tf`,
+          `variables.tf` and `outputs.tf` (plus only clearly scoped extras such
+          as a build script, Lambda source or README) and accepts `environment` and
+          `project`; names follow `{project}-{environment}-{resource}`; labels
+          are `this` or descriptive; new variables should have types,
+          descriptions and validation; a new module is wired into `environments/dev/main.tf` and
+          `outputs.tf`. Optional integrations (Axiom, Grafana Cloud) must keep
+          their blank-skip behaviour, with no hardcoded account IDs or domains
+          outside what `ADOPTION.md` lists.
+        - **Secrets and cost**: no secret values in code, outputs, or state
+          (secret slots are documented, not created); outputs that carry
+          secrets are `sensitive`. Flag NAT, Fargate, ALB, Multi-AZ or logging
+          changes that quietly raise spend, and any budget or alarm removed.
+        - **CI and scripts**: workflow permissions stay minimal, callers of
+          shared workflows pin their refs, untrusted event data stays out of
+          `run:` lines, and the required `gate` job still reports on docs-only
+          PRs. Bash in `scripts/` must be quoted and idempotent. Docs and ADRs
+          that describe changed behaviour should be updated with it.
+
+  clear-label:
+    needs: review
+    if: >-
+      always() && github.event.action == 'labeled' &&
+      github.event.pull_request.draft == false &&
+      (github.event.label.name == 're-review' || github.event.label.name == 'review:sonnet')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Remove the trigger label so it can be added again
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          LABEL: ${{ github.event.label.name }}
+        # REST, not `gh pr edit`: the GraphQL path can trip on PR project
+        # fields with GITHUB_TOKEN, and a label left behind would make the
+        # next re-add a no-op (no `labeled` event).
+        run: |
+          enc=$(jq -rn --arg l "$LABEL" '$l|@uri')
+          gh api --method DELETE "repos/$REPO/issues/$PR/labels/$enc" >/dev/null
