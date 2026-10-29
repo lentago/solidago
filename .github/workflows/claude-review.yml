@@ -79,11 +79,12 @@ jobs:
           CIDRs; the app and data tiers stay private; the ALB listener rule
           priorities stay unique; encryption at rest and in transit stays on;
           WAF rules and rate limits are not loosened.
-        - **Module conventions**: each module has exactly `main.tf`,
-          `variables.tf` and `outputs.tf` and accepts `environment` and
+        - **Module conventions**: each module has `main.tf`,
+          `variables.tf` and `outputs.tf` (plus only clearly scoped extras such
+          as a build script, Lambda source or README) and accepts `environment` and
           `project`; names follow `{project}-{environment}-{resource}`; labels
-          are `this` or descriptive; new variables have types, descriptions and
-          validation; a new module is wired into `environments/dev/main.tf` and
+          are `this` or descriptive; new variables should have types,
+          descriptions and validation; a new module is wired into `environments/dev/main.tf` and
           `outputs.tf`. Optional integrations (Axiom, Grafana Cloud) must keep
           their blank-skip behaviour, with no hardcoded account IDs or domains
           outside what `ADOPTION.md` lists.
