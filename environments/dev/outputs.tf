@@ -46,8 +46,13 @@ output "github_actions_role_arn" {
 }
 
 output "github_actions_terraform_role_arn" {
-  description = "GitHub Actions Terraform pipeline role ARN for CI/CD"
+  description = "GitHub Actions Terraform pipeline APPLY role ARN (push to main / workflow_dispatch)"
   value       = module.iam.github_actions_terraform_role_arn
+}
+
+output "github_actions_terraform_plan_role_arn" {
+  description = "GitHub Actions Terraform pipeline PLAN role ARN (read-only, pull_request; #225)"
+  value       = module.iam.github_actions_terraform_plan_role_arn
 }
 
 output "dotgithub_github_actions_terraform_role_arn" {

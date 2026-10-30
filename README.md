@@ -174,6 +174,17 @@ The app deploy role can push containers and update ECS services. The Terraform r
 
 Both pipelines authenticate via GitHub's OIDC provider. No AWS access keys in GitHub Secrets. The Terraform role's trust policy is scoped to the `terraform` GitHub environment, so only the `terraform.yml` workflow can assume it.
 
+### Terraform CI Roles: Plan vs Apply
+
+The Terraform pipeline uses two roles (#225): `solidago-dev-github-actions-terraform-plan` — AWS `ReadOnlyAccess` plus state read, the S3-native lockfile, and this stack's secret values — trusted only for this repo's `pull_request` sub; and `solidago-dev-github-actions-terraform`, the write role, trusted only for `ref:refs/heads/main` (push and `workflow_dispatch` on main). A PR run can never hold write credentials, and an apply attempted under the plan role is denied on its first mutating call. Each job logs `aws sts get-caller-identity` so the run shows which role it got.
+
+**Bootstrap ordering.** Both roles are themselves Terraform-managed, and the plan role does not exist until an apply creates it — and that apply runs under the existing role. So the split lands in two merges:
+
+1. **Create, don't switch.** Terraform adds the plan role and *widens* the apply role's trust to `ref:refs/heads/main` alongside the legacy `environment:terraform` sub. `terraform.yml` still runs both jobs in the `terraform` environment on the existing role, so this PR's own plan and its merge apply succeed unchanged.
+2. **Switch, then narrow.** `terraform.yml` drops `environment: terraform` from both jobs — the plan job assumes the plan role (sub `…:pull_request`), the apply job the apply role (sub `…:ref:refs/heads/main`) — and Terraform removes the `environment:terraform` sub from the apply role. This PR's plan runs under the plan role created by step 1; its merge apply assumes via the `ref:refs/heads/main` sub step 1 already trusts, then narrows the trust. No trust narrows before every caller has moved off it.
+
+Once both steps have landed, a fresh adopter skips the dance: the hand-bootstrapped apply role (BOOTSTRAP Step 7) is created with the final `ref:refs/heads/main` trust, and the first local apply creates the plan role before any PR runs.
+
 ### Service-Level IAM Wildcards on the Terraform Role
 
 The real security boundary is the OIDC sub-claim scoping, not per-action IAM restrictions. Service-level wildcards (`ec2:*`, `ecs:*`, etc.) keep the policy maintainable as modules evolve, while the OIDC trust ensures only the intended workflow can assume the role.

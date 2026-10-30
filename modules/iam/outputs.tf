@@ -31,8 +31,13 @@ output "github_oidc_provider_arn" {
 }
 
 output "github_actions_terraform_role_arn" {
-  description = "ARN of the GitHub Actions Terraform pipeline IAM role"
+  description = "ARN of the GitHub Actions Terraform pipeline APPLY (write) IAM role"
   value       = aws_iam_role.github_actions_terraform.arn
+}
+
+output "github_actions_terraform_plan_role_arn" {
+  description = "ARN of the GitHub Actions Terraform pipeline PLAN (read-only, pull_request) IAM role (#225)"
+  value       = aws_iam_role.github_actions_terraform_plan.arn
 }
 
 output "dotgithub_github_actions_terraform_role_arn" {
