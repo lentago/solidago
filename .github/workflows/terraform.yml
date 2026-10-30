@@ -102,6 +102,11 @@ jobs:
           role-to-assume: arn:aws:iam::365184644049:role/solidago-dev-github-actions-terraform # Account-specific OIDC role
           aws-region: us-east-1
 
+      # Names the assumed role in the job log (#225 acceptance: plan vs apply
+      # credentials are distinguishable per run).
+      - name: AWS caller identity
+        run: aws sts get-caller-identity
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
 
@@ -201,6 +206,11 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::365184644049:role/solidago-dev-github-actions-terraform # Account-specific OIDC role
           aws-region: us-east-1
+
+      # Names the assumed role in the job log (#225 acceptance: plan vs apply
+      # credentials are distinguishable per run).
+      - name: AWS caller identity
+        run: aws sts get-caller-identity
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
