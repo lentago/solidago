@@ -77,6 +77,12 @@ variable "betula_repo" {
   default     = "betula"
 }
 
+variable "drosera_repo" {
+  description = "lentago/drosera's repo name (without org prefix), whose Terraform CI may assume the drosera Terraform pipeline role for its own state key (lentago/drosera#169)."
+  type        = string
+  default     = "drosera"
+}
+
 variable "additional_execution_secret_arns" {
   description = <<-EOT
     Extra Secrets Manager secret ARNs the ECS task EXECUTION role may read,

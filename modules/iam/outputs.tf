@@ -44,3 +44,8 @@ output "betula_github_actions_terraform_role_arn" {
   description = "ARN of the lentago/betula Terraform pipeline IAM role (state key betula/terraform.tfstate; lentago/betula#118)"
   value       = aws_iam_role.betula_github_actions_terraform.arn
 }
+
+output "drosera_github_actions_terraform_role_arn" {
+  description = "ARN of the lentago/drosera Terraform pipeline IAM role (state key drosera/terraform.tfstate; lentago/drosera#169)"
+  value       = aws_iam_role.drosera_github_actions_terraform.arn
+}
