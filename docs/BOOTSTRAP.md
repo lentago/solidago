@@ -230,7 +230,7 @@ cat > /tmp/terraform-role-trust.json << 'EOF'
       "Condition": {
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:YOUR_ORG/solidago:environment:terraform"
+          "token.actions.githubusercontent.com:sub": "repo:YOUR_ORG/solidago:ref:refs/heads/main"
         }
       }
     }
@@ -331,11 +331,9 @@ terraform plan
 
 ---
 
-## Step 8: Create the GitHub Environment
+## Step 8: GitHub Environment (no longer needed)
 
-1. Go to your repo → Settings → Environments
-2. Create a new environment named `terraform`
-3. No protection rules needed — branch protection gates what reaches main
+Earlier revisions had you create a `terraform` GitHub Environment here. Since #225 neither `terraform.yml` job declares an environment: the plan job's OIDC sub is `repo:YOUR_ORG/solidago:pull_request` (read-only `solidago-dev-github-actions-terraform-plan` role, created by your first apply) and the apply job's is `repo:YOUR_ORG/solidago:ref:refs/heads/main` (the role from Step 7). Skip this step.
 
 ---
 
@@ -364,11 +362,12 @@ git push origin test/verify-pipeline
 ```
 
 Open the PR in GitHub. The Terraform Plan job should:
-- Authenticate via OIDC to the `terraform` environment
+- Authenticate via OIDC as the read-only `solidago-dev-github-actions-terraform-plan` role (the `AWS caller identity` step names it)
 - Run `terraform plan` successfully
 - Post the plan output as a PR comment
 
 Merge the PR. The Terraform Apply job should:
+- Authenticate as `solidago-dev-github-actions-terraform` (again named by `AWS caller identity`)
 - Run `terraform apply -auto-approve`
 - Complete with no changes
 

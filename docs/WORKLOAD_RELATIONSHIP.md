@@ -22,7 +22,8 @@ The platform does **not** know what the workload is. It exposes primitives; the 
 There are two GitHub Actions IAM roles in `modules/iam`:
 
 - **`solidago-dev-github-actions`** — assumed by workload repos to deploy. Trust policy: `repo:lentago/${var.app_github_repo}:*`. Currently set to `ice-cream-book`.
-- **`solidago-dev-github-actions-terraform`** — assumed by this repo's `terraform` GitHub environment. Trust policy: `repo:lentago/${var.github_repo}:environment:terraform`. Plans and applies infrastructure.
+- **`solidago-dev-github-actions-terraform`** — assumed by this repo's `terraform.yml` apply job on `main`. Trust policy: `repo:lentago/${var.github_repo}:ref:refs/heads/main`. Applies infrastructure.
+- **`solidago-dev-github-actions-terraform-plan`** — assumed by the same workflow's plan job on pull requests. Trust policy: `repo:lentago/${var.github_repo}:pull_request`. `ReadOnlyAccess` plus state read/lockfile; plans only (#225).
 
 Neither role can do the other's job. A compromised workload deploy can't mutate infrastructure; a compromised infrastructure pipeline can't push arbitrary container images without going through Terraform.
 

@@ -403,16 +403,12 @@ resource "aws_iam_role_policy_attachment" "github_actions" {
 # permissions from app deploy permissions (blast radius reduction), and
 # keeps write credentials out of PR runs.
 #
-# Trust is two subs, OR-matched by StringEquals, during the #225 two-step
-# rollout (see README "Terraform CI roles: plan vs apply"):
-#   - repo:<org>/<repo>:ref:refs/heads/main — the target posture. A job with
-#     no `environment:` key running on main (push or workflow_dispatch)
-#     mints this sub; a PR branch cannot.
-#   - repo:<org>/<repo>:environment:terraform — TRANSITIONAL. The current
-#     terraform.yml runs both jobs in the `terraform` environment, so the
-#     plan on the PR that adds the plan role, and the apply on its merge,
-#     still assume this role under that sub. Step 2 of #225 moves both jobs
-#     off the environment and drops this entry.
+# Trust: repo:<org>/<repo>:ref:refs/heads/main only. A job with no
+# `environment:` key running on main (push or workflow_dispatch) mints this
+# sub; a PR branch cannot. The legacy environment:terraform sub — mintable by
+# ANY branch that declares the environment — was dropped in #225 step 2 once
+# terraform.yml moved both jobs off the environment (see README "Terraform CI
+# Roles: Plan vs Apply" for the two-step ordering).
 # =============================================================================
 
 data "aws_iam_policy_document" "github_actions_terraform_assume" {
@@ -433,10 +429,7 @@ data "aws_iam_policy_document" "github_actions_terraform_assume" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/main",
-        "repo:${var.github_org}/${var.github_repo}:environment:terraform", # transitional — removed in #225 step 2
-      ]
+      values   = ["repo:${var.github_org}/${var.github_repo}:ref:refs/heads/main"]
     }
   }
 }

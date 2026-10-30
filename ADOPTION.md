@@ -171,7 +171,7 @@ points at the tracking issue.
 | Hand-allocated ALB listener-rule priorities `110/120/130/140/150` | `environments/dev/main.tf` (`listener_rule_priority` on each site/apex module) | Keep each priority unique per rule you retain; there is no auto-allocator | mechanical |
 | GitHub org `lentago` + workload repos (`site-icecreamtofightwith-com`, `site-lentago-dev`, immutable `lentago@…/site-pondviewlane-com@…`) | `environments/dev/main.tf:98–146` (`module.iam` inputs) | Your org and your workload repo name(s) — this is the OIDC deploy trust | mechanical |
 | Cross-repo tfstate role `dotgithub-github-actions-terraform` trusting `lentago/.github` | `modules/iam/main.tf:~500–560` + `dotgithub_repo` input | Delete if you have no shared-workflows repo needing state access | mechanical |
-| Terraform-pipeline OIDC trust `repo:<org>/solidago:environment:terraform` | created by hand in the drill; see BOOTSTRAP Step 7 | Your org/repo | mechanical |
+| Terraform-pipeline OIDC trust `repo:<org>/solidago:ref:refs/heads/main` (apply role; the plan role's `…:pull_request` trust is Terraform-managed from `github_org`/`github_repo`) | created by hand in the drill; see BOOTSTRAP Step 7 | Your org/repo | mechanical |
 | Axiom datasets `cjp-solidago-ecs` / `cjp-solidago-alb` (FireLens sidecars, ingest secrets, ALB-log shipper) | `axiom_ecs_dataset` / `axiom_alb_dataset` in `terraform.tfvars`; our values are set in `.github/workflows/terraform.yml:89–90,189–190` | Delete those two workflow lines and leave both variables `""` to skip Axiom (apps log to CloudWatch via plain awslogs, no shipper Lambda); or set your own datasets and populate the two ingest secrets out-of-band | mechanical — optional since [#188](https://github.com/lentago/solidago/issues/188), like Grafana Cloud |
 | Monthly budget threshold `$100` | `environments/dev/main.tf` (`module.budgets`) | Your budget | mechanical |
 
@@ -203,7 +203,7 @@ assumes the one before it worked.
 | 8 | First apply from your machine (creates the OIDC provider + app deploy role; ~10–15 min): `terraform apply`. | Apply succeeds; `terraform output` shows `route53_name_servers` and `github_actions_role_arn`. | |
 | 9 | Delegate DNS: set your registrar's NS records to the `route53_name_servers` output. | `dig NS <YOUR_DOMAIN>` returns the four Route 53 nameservers. | |
 | 10 | **⚠️ Identity-provider bootstrap — the trip hazard. See the warning below.** Create the Terraform-pipeline IAM role by hand and `terraform import` it (three imports), per [BOOTSTRAP Step 7](docs/BOOTSTRAP.md#step-7-create-the-terraform-pipeline-iam-role). | `terraform plan` reports **No changes** for the imported role/policy/attachment. | |
-| 11 | Create the GitHub `terraform` Environment and a `main` branch-protection ruleset requiring the Terraform Plan check ([BOOTSTRAP Steps 8–9](docs/BOOTSTRAP.md#step-8-create-the-github-environment)). | Repo → Settings shows the `terraform` environment and the ruleset. | |
+| 11 | Create a `main` branch-protection ruleset requiring the Terraform Plan check ([BOOTSTRAP Step 9](docs/BOOTSTRAP.md#step-9-configure-branch-protection)); no GitHub Environment is needed since #225. | Repo → Settings shows the ruleset. | |
 | 12 | Verify the pipelines: open a trivial PR (plan runs), merge it (apply runs) ([BOOTSTRAP Step 10](docs/BOOTSTRAP.md#step-10-verify-the-pipelines)). | The PR's **Terraform Plan** check is green; the post-merge **Apply** completes. | |
 
 **If a check doesn't go green,** stop at that step and see
@@ -218,7 +218,7 @@ assumes the one before it worked.
 > them from then on. The exact commands and JSON are in
 > [BOOTSTRAP Step 7](docs/BOOTSTRAP.md#step-7-create-the-terraform-pipeline-iam-role) —
 > follow them verbatim, substituting your account ID and org. If the import
-> addresses or the OIDC `sub` claim (`repo:<org>/solidago:environment:terraform`)
+> addresses or the OIDC `sub` claim (`repo:<org>/solidago:ref:refs/heads/main`)
 > don't match exactly, `terraform plan` will show the role being **destroyed
 > and recreated** instead of "No changes" — that's the tell that the import
 > didn't take. Fix the trust policy or re-run the import before proceeding.
