@@ -70,3 +70,15 @@ boundary is what actually contains risk.
 - There is no second layer (boundary/SCP) beneath the OIDC gate. In this account
   that is an accepted trade; it would be the first thing to revisit if the account
   ever stopped being single-operator.
+
+## Amendment (2026-10-30, #225)
+
+The wildcards stand; the boundary they rely on moved. The `terraform`
+environment had no deployment-branch policy, so `environment:terraform` was
+mintable by any branch that declared it — including a PR branch's own edit of
+`terraform.yml`. The pipeline is now split: the write role above trusts only
+`repo:lentago/solidago:ref:refs/heads/main`, and PR plans run under a separate
+read-only `solidago-dev-github-actions-terraform-plan` role (AWS
+`ReadOnlyAccess` plus state read/lockfile) trusted only for the `pull_request`
+sub. Per-resource least privilege remains out of scope by design; the
+`trivy:ignore:AVD-AWS-0345` on the write role's `s3:*` stays and cites #225.

@@ -11,7 +11,12 @@
 #   3. Manual workflow_dispatch on main → apply (re-reads secrets and redeploys
 #      without waiting for an unrelated push; useful after credential rotation)
 #
-# Authenticates via OIDC using the terraform-specific IAM role.
+# Authenticates via OIDC with two roles (#225): the plan job assumes the
+# read-only solidago-dev-github-actions-terraform-plan role (trust: this repo's
+# `pull_request` sub); the apply job assumes the write role
+# solidago-dev-github-actions-terraform (trust: `ref:refs/heads/main`). Neither
+# job declares `environment:` — that key would replace the sub with
+# `environment:<name>` and match neither trust policy.
 # Plan output is posted as a PR comment for review.
 
 name: Terraform
@@ -72,7 +77,6 @@ jobs:
     needs: changes
     if: needs.changes.outputs.tf == 'true' && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    environment: terraform
     # Hidden Pitzi Labs preview host is supplied from the repo Actions
     # variable (not committed to source). Required by var.pitzilabs_preview_host.
     env:
@@ -99,7 +103,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
         with:
-          role-to-assume: arn:aws:iam::365184644049:role/solidago-dev-github-actions-terraform # Account-specific OIDC role
+          role-to-assume: arn:aws:iam::365184644049:role/solidago-dev-github-actions-terraform-plan # Read-only plan role (#225)
           aws-region: us-east-1
 
       # Names the assumed role in the job log (#225 acceptance: plan vs apply
@@ -174,7 +178,6 @@ jobs:
     name: Terraform Apply
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: terraform
     concurrency:
       group: terraform-apply
       cancel-in-progress: false
@@ -204,7 +207,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
         with:
-          role-to-assume: arn:aws:iam::365184644049:role/solidago-dev-github-actions-terraform # Account-specific OIDC role
+          role-to-assume: arn:aws:iam::365184644049:role/solidago-dev-github-actions-terraform # Apply (write) role; trust = ref:refs/heads/main
           aws-region: us-east-1
 
       # Names the assumed role in the job log (#225 acceptance: plan vs apply
