@@ -59,6 +59,11 @@ output "betula_github_actions_terraform_role_arn" {
   description = "ARN of the lentago/betula Terraform pipeline role (lentago/betula#118)"
   value       = module.iam.betula_github_actions_terraform_role_arn
 }
+
+output "drosera_github_actions_terraform_role_arn" {
+  description = "ARN of the lentago/drosera Terraform pipeline role (lentago/drosera#169)"
+  value       = module.iam.drosera_github_actions_terraform_role_arn
+}
 output "alb_security_group_id" {
   description = "Security group ID for ALB"
   value       = module.security_groups.alb_security_group_id

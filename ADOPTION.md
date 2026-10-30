@@ -160,7 +160,7 @@ points at the tracking issue.
 |---|---|---|---|
 | AWS account `365184644049` (state bucket suffix + state CMK ARN) | `environments/dev/backend.tf:3,12` | Your 12-digit account ID | mechanical |
 | AWS account `365184644049` (Terraform-pipeline role ARN, ×2) | `.github/workflows/terraform.yml:102,202` | Your account ID | mechanical |
-| Cross-account role ARN in a code comment (drosera's `homelab-observability` role) | `modules/iam/main.tf:516` | Delete — it documents a fleet cross-repo arrangement you don't have | mechanical |
+| Cross-repo role ARN in a code comment (drosera's `drosera-github-actions-terraform` role) | `modules/iam/main.tf:516` | Delete — it documents a fleet cross-repo arrangement you don't have | mechanical |
 | `solidago-*` resource naming (state bucket, CMK alias, all AWS resource names) | driven by `project` in `terraform.tfvars`; bucket/alias also in `environments/dev/backend.tf` and `scripts/bootstrap/bootstrap-backend.sh` | Your project short-name (keep it consistent across all three places) | mechanical |
 | Primary domain `icecreamtofightwith.com` + wildcard `*.icecreamtofightwith.com` | `environments/dev/main.tf:174,176` (`module.dns`) | Your registered domain | mechanical |
 | Apex site `lentago.dev` and its Fastmail MX/DKIM/SPF/DMARC + Google/GitHub verification tokens | `environments/dev/main.tf:340–387` (`module.lentago_domain`) | Delete the whole module block — this is our landing site, not yours | mechanical |

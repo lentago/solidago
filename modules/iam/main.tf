@@ -513,7 +513,7 @@ resource "aws_iam_role_policy_attachment" "github_actions_terraform" {
 # terraform.yml, which assumes a single Terraform-pipeline role from BOTH its
 # plan job (triggered on pull_request) and its apply job (triggered on push
 # to main) — see
-# arn:aws:iam::365184644049:role/homelab-observability-github-actions-terraform.
+# arn:aws:iam::365184644049:role/drosera-github-actions-terraform.
 # The trust condition below is a list of two subs, OR-matched by
 # StringEquals (same technique as github_actions_assume above): the
 # push-to-main sub for apply, and the fixed pull_request sub GitHub issues
@@ -738,4 +738,122 @@ resource "aws_iam_policy" "betula_github_actions_terraform" {
 resource "aws_iam_role_policy_attachment" "betula_github_actions_terraform" {
   role       = aws_iam_role.betula_github_actions_terraform.name
   policy_arn = aws_iam_policy.betula_github_actions_terraform.arn
+}
+
+# =============================================================================
+# DROSERA REPO TERRAFORM PIPELINE ROLE
+#
+# lentago/drosera keeps the state for its Grafana Cloud Terraform (dashboards,
+# folders, alert rules) in solidago's shared tfstate bucket. This role gives
+# drosera's CI exactly what the betula role above gives lentago/betula:
+# read/write on its own state key, the tfstate CMK, and the shared lock table.
+# It cannot read solidago's own state, any other repo's state, or any other AWS
+# service; the Grafana provider authenticates with Grafana Cloud credentials
+# held as drosera repo secrets, not via AWS.
+#
+# Phase 1 of lentago/drosera#169, which completes the homelab-observability ->
+# drosera rename: drosera's CI and its state move onto this role and the
+# drosera/ key in a later drosera-side cutover. The pre-rename role it replaces
+# was created by hand outside Terraform and is retired separately.
+#
+# Trust mirrors the dotgithub and betula roles: the push-to-main sub for apply,
+# plus the fixed pull_request sub for plan. drosera is an established (renamed)
+# repo, so it issues the plain "repo:org/repo:..." sub form.
+# =============================================================================
+
+data "aws_iam_policy_document" "drosera_github_actions_terraform_assume" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values = [
+        "repo:${var.github_org}/${var.drosera_repo}:ref:refs/heads/main",
+        "repo:${var.github_org}/${var.drosera_repo}:pull_request",
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "drosera_github_actions_terraform" {
+  name               = "drosera-github-actions-terraform"
+  assume_role_policy = data.aws_iam_policy_document.drosera_github_actions_terraform_assume.json
+
+  max_session_duration = 3600
+
+  tags = {
+    Name = "drosera-github-actions-terraform"
+  }
+}
+
+# Least privilege, same shape as the dotgithub and betula roles: this repo's
+# state object, the tfstate CMK (the bucket's key policy delegates to IAM), and
+# the lock table.
+data "aws_iam_policy_document" "drosera_github_actions_terraform" {
+  statement {
+    sid = "TerraformStateS3"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+    ]
+    resources = [
+      "arn:aws:s3:::solidago-tfstate-${var.aws_account_id}/drosera/terraform.tfstate",
+    ]
+  }
+
+  statement {
+    sid = "TerraformStateKMS"
+    actions = [
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:GenerateDataKey",
+      "kms:DescribeKey",
+    ]
+    resources = [var.tfstate_kms_key_arn]
+  }
+
+  statement {
+    sid = "TerraformStateLock"
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:DescribeTable",
+    ]
+    resources = [
+      "arn:aws:dynamodb:${var.aws_region}:${var.aws_account_id}:table/solidago-tfstate-lock",
+    ]
+  }
+
+  statement {
+    sid       = "CallerIdentity"
+    actions   = ["sts:GetCallerIdentity"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "drosera_github_actions_terraform" {
+  name   = "drosera-github-actions-terraform"
+  policy = data.aws_iam_policy_document.drosera_github_actions_terraform.json
+
+  tags = {
+    Name = "drosera-github-actions-terraform"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "drosera_github_actions_terraform" {
+  role       = aws_iam_role.drosera_github_actions_terraform.name
+  policy_arn = aws_iam_policy.drosera_github_actions_terraform.arn
 }
