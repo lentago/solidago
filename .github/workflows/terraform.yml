@@ -207,32 +207,17 @@ jobs:
 
       # Out-of-band secrets (#213 pattern, #230). Terraform never holds these
       # values, so a green apply cannot tell a real one from the placeholder the
-      # slot was created with. Fail the run while a slot is missing, empty or
-      # still placeholder-shaped. Only the shape is tested: the value is masked
-      # and never printed. Runs after the apply, so the infrastructure still
-      # lands; the red run is the signal to write the value.
+      # slot was created with. Fail the run while a slot is missing, on the
+      # aws/ssm key, empty or still placeholder-shaped. Only the shape is tested:
+      # the value is masked and never printed. Runs after the apply, so the
+      # infrastructure still lands; the red run is the signal to write the value.
       - name: Check out-of-band secrets
+        working-directory: .
         env:
           # SSM SecureString slots to check; keep in step with the
           # pondview_ask_api_key_ssm_path output (modules/ask-lambda).
           SSM_SLOTS: /solidago-dev-pondview-ask/anthropic-api-key
-        run: |
-          rc=0
-          for slot in $SSM_SLOTS; do
-            if ! value=$(aws ssm get-parameter --name "$slot" --with-decryption \
-                  --query Parameter.Value --output text 2>/dev/null); then
-              echo "::error::Out-of-band secret $slot is missing or unreadable. Create it with aws ssm put-parameter (see modules/ask-lambda/main.tf)."
-              rc=1; continue
-            fi
-            [ -n "$value" ] && echo "::add-mask::$value"
-            case "$value" in
-              ""|PLACEHOLDER*)
-                echo "::error::Out-of-band secret $slot still holds its placeholder. Write the real value with aws ssm put-parameter --overwrite."
-                rc=1 ;;
-              *) echo "ok: $slot is set (value not shown)" ;;
-            esac
-          done
-          exit "$rc"
+        run: ./scripts/ci/check-out-of-band-secrets.sh $SSM_SLOTS
 
   # Single required status check for the terraform pipeline. Runs on every PR
   # (if: always()) so the ruleset can require exactly `gate`: it reports green

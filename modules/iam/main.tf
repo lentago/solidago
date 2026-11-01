@@ -453,6 +453,26 @@ data "aws_iam_policy_document" "github_actions_terraform" {
     actions   = ["sts:GetCallerIdentity"]
     resources = ["*"]
   }
+
+  # The apply job's post-apply "Check out-of-band secrets" step (#230, the #213
+  # pattern) reads each hand-written SSM slot to confirm it holds a real value
+  # on the platform CMK. It reads into memory and tests shape only; nothing is
+  # stored or printed. Scoped to this stack's parameter names. kms:Decrypt is
+  # already covered by kms:* above. DescribeParameters (to read the slot's
+  # KeyId) has no resource-level scoping, and returns metadata only.
+  statement {
+    sid       = "OutOfBandSecretCheck"
+    effect    = "Allow"
+    actions   = ["ssm:GetParameter"]
+    resources = ["arn:aws:ssm:${var.aws_region}:${var.aws_account_id}:parameter/${var.project}-${var.environment}-*"]
+  }
+
+  statement {
+    sid       = "OutOfBandSecretDescribe"
+    effect    = "Allow"
+    actions   = ["ssm:DescribeParameters"]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_policy" "github_actions_terraform" {

@@ -142,7 +142,7 @@ the exact variable each answer becomes.
 | A second unguessable subdomain for the second preview site | | `terraform.tfvars` → `pondview_preview_host` |
 | Grafana Cloud AWS account ID (optional; blank to skip) | | `terraform.tfvars` → `grafana_cloud_account_id` |
 | Grafana Cloud External ID (optional; blank to skip) | | `terraform.tfvars` → `grafana_cloud_external_id` |
-| Anthropic API key for the Ask Lambda (optional; without it the endpoint returns 502) | | **Not** a Terraform variable, so it never enters state: write it out of band to the SSM SecureString named by the `pondview_ask_api_key_ssm_path` output (`aws ssm put-parameter --type SecureString`; see [`modules/ask-lambda/main.tf`](modules/ask-lambda/main.tf)) |
+| Anthropic API key for the Ask Lambda (optional; without it the endpoint returns 502) | | **Not** a Terraform variable, so it never enters state: write it out of band to the SSM SecureString named by the `pondview_ask_api_key_ssm_path` output, on the platform CMK (`aws ssm put-parameter --type SecureString --key-id alias/<project>-<environment>-main`; see [`modules/ask-lambda/main.tf`](modules/ask-lambda/main.tf)) |
 
 Some values are **not** Terraform variables — they're hardcoded into the
 backend config, the CI workflow, and the root module. Those are handled in the
@@ -167,7 +167,7 @@ points at the tracking issue.
 | Apex site `pondviewlane.com` + Google token + DMARC | `environments/dev/main.tf:477–507` (`module.pondview_domain`) | Delete the block | mechanical |
 | Second apex `essexcrossingatmontserrat.com` fronting the same backend | `environments/dev/main.tf:525–552` (`module.essexcrossing_domain`) | Delete the block | mechanical |
 | Extra site backends `module.site_lentago` / `module.site_pondview` / `module.ask_pondview` | `environments/dev/main.tf:271–351,395–472` | Delete the blocks (or adapt one as a template for your own second site) | mechanical |
-| Out-of-band secret slot `/solidago-dev-pondview-ask/anthropic-api-key` checked after every apply | `.github/workflows/terraform.yml:218` (`SSM_SLOTS`, step *Check out-of-band secrets*) | Delete the step once the Ask module is deleted; else your `pondview_ask_api_key_ssm_path` output value | mechanical |
+| Out-of-band secret slot `/solidago-dev-pondview-ask/anthropic-api-key` checked after every apply | `.github/workflows/terraform.yml:219` (`SSM_SLOTS`, step *Check out-of-band secrets*) | Delete the step once the Ask module is deleted; else your `pondview_ask_api_key_ssm_path` output value | mechanical |
 | CORS origins `https://pondviewlane.com,https://essexcrossingatmontserrat.com` | `environments/dev/main.tf:461` (`module.ask_pondview`) | N/A once the Ask module is deleted; else your site origins | mechanical |
 | Hand-allocated ALB listener-rule priorities `110/120/130/140/150` | `environments/dev/main.tf` (`listener_rule_priority` on each site/apex module) | Keep each priority unique per rule you retain; there is no auto-allocator | mechanical |
 | GitHub org `lentago` + workload repos (`site-icecreamtofightwith-com`, `site-lentago-dev`, immutable `lentago@…/site-pondviewlane-com@…`) | `environments/dev/main.tf:98–146` (`module.iam` inputs) | Your org and your workload repo name(s) — this is the OIDC deploy trust | mechanical |

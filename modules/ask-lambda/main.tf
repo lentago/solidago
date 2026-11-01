@@ -26,17 +26,23 @@
 # saved plan), which is what this replaced. Same pattern as uvularia's
 # templates/ask-function.
 #
-# Create the parameter once, out of band, with the placeholder, before or after
-# the first apply:
+# Create the parameter once, out of band, before or after the first apply,
+# with the real key, or with PLACEHOLDER-set-out-of-band until you have one:
 #
 #   aws ssm put-parameter --type SecureString \
+#     --key-id alias/<project>-<environment>-main \
 #     --name /<project>-<environment>-<name>-ask/anthropic-api-key \
-#     --value PLACEHOLDER-set-out-of-band
+#     --value '<key>'
 #
-# then write the real key (and rotate it later) with the same command plus
-# --overwrite and the key as --value. Until a real key is there, the endpoint
-# answers 502 and the Terraform workflow's post-apply "Check out-of-band
-# secrets" step fails the run (the #213 pattern: present is not the same as set).
+# and rotate it later with the same command plus --overwrite. Use the platform
+# CMK (--key-id), not the default aws/ssm key: the aws/ssm key policy lets ANY
+# principal in the account that holds ssm:GetParameter decrypt, and AWS
+# ReadOnlyAccess grants ssm:Get*. The CMK's policy delegates to IAM, so only
+# roles granted kms:Decrypt on it (this function's, scoped below to this one
+# parameter, and the apply role) can read the key. Until a real key on the CMK
+# is there, the endpoint answers 502 and the Terraform workflow's post-apply
+# "Check out-of-band secrets" step fails the run (the #213 pattern: present is
+# not the same as set).
 #
 # The handler source is vendored at src/handler.mjs; see its header for the
 # reference-copy sync note.
@@ -111,10 +117,10 @@ data "aws_iam_policy_document" "this" {
   }
 
   # SSM decrypts a SecureString on the caller's behalf, which needs kms:Decrypt
-  # on the key behind it (the account's aws/ssm key unless the parameter was
-  # written with --key-id). The conditions bind the grant to SSM decrypting
-  # THIS parameter: SSM passes the parameter ARN as encryption context, so the
-  # role can decrypt nothing else, through SSM or directly.
+  # on the key behind it (the platform CMK, per the header). The conditions
+  # bind the grant to SSM decrypting THIS parameter: SSM passes the parameter
+  # ARN as encryption context, so the role can decrypt nothing else, through
+  # SSM or directly.
   statement {
     sid       = "DecryptApiKeyViaSSM"
     actions   = ["kms:Decrypt"]
