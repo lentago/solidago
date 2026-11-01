@@ -105,9 +105,12 @@ Everything you need, in one list. No hunting through other repos.
   - **Grafana Cloud** — set `grafana_cloud_account_id` / `_external_id` to
     create a read-only cross-account metrics role; leave both `""` to skip the
     module entirely.
-  - **Anthropic API key** — powers the optional "Ask the Wiki" Lambda; leave it
-    blank and the Lambda deploys in a degraded state (returns 502) instead of
-    failing.
+  - **Anthropic API key** — powers the optional "Ask the Wiki" Lambda. It is
+    never a Terraform value: you write it to an SSM SecureString on the
+    platform CMK yourself (see [Intake](#intake)). Without it the Lambda
+    deploys in a degraded state (returns 502) and the CI post-apply check
+    fails until you write it, or until you delete the Ask module and that
+    check (see the [Swap list](#swap-list)).
   - **Axiom** — set `axiom_ecs_dataset` / `axiom_alb_dataset` to ship
     container logs (FireLens) and ALB access logs (shipper Lambda) to Axiom;
     leave both `""` to skip it — the ECS tasks then log straight to CloudWatch.
