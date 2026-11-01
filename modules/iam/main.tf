@@ -276,11 +276,17 @@ resource "aws_iam_role" "github_actions" {
   }
 }
 
-# GitHub Actions needs broad-ish permissions because it runs Terraform
-# (which creates/modifies/destroys infrastructure) and deploys to ECS.
-# In a real org, you'd scope this more tightly — perhaps separate roles
-# for "terraform plan" (read-only) vs "terraform apply" (write).
-# For this environment, we give it the permissions it needs for Phases 3-7.
+# The app deploy role pushes images and rolls ECS services; it runs no
+# Terraform. Terraform runs on the separate pipeline role below (#55 split), so
+# this role holds no grant on the state bucket or the state key. The state
+# grants it once held were removed in #229, after IAM Access Advisor and
+# CloudTrail showed no S3 or KMS use by the role and no trusted caller's
+# workflow (all on shared-workflows site-deploy.yml) touches state.
+#
+# That keeps state out of reach only while the roles it can pass (PassRole
+# below: the shared ECS task and execution roles) hold no state grant either:
+# a trusted repo can ship code that runs under the task role. The wider
+# cross-site reach of this one shared role is #237.
 data "aws_iam_policy_document" "github_actions" {
   # ECS deployment permissions
   statement {
@@ -338,39 +344,6 @@ data "aws_iam_policy_document" "github_actions" {
       aws_iam_role.ecs_task.arn,
     ]
   }
-
-  # Terraform state access — needs to read/write the S3 backend
-  statement {
-    sid = "TerraformStateS3"
-    actions = [
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject",
-      "s3:ListBucket",
-    ]
-    resources = [
-      "arn:aws:s3:::solidago-tfstate-${var.aws_account_id}",
-      "arn:aws:s3:::solidago-tfstate-${var.aws_account_id}/*",
-    ]
-  }
-
-  # The state bucket is encrypted with a dedicated, bootstrap-managed CMK
-  # (alias/solidago-tfstate). Reading state requires kms:Decrypt; writing it
-  # requires kms:GenerateDataKey (S3 SSE-KMS derives a per-object data key).
-  # Scoped to that key only — this role gets no access to the platform's
-  # main encryption key. The Terraform pipeline role already holds kms:* and
-  # so is covered without a separate statement.
-  statement {
-    sid = "TerraformStateKMS"
-    actions = [
-      "kms:Encrypt",
-      "kms:Decrypt",
-      "kms:GenerateDataKey",
-      "kms:DescribeKey",
-    ]
-    resources = [var.tfstate_kms_key_arn]
-  }
-
 }
 
 resource "aws_iam_policy" "github_actions" {
@@ -581,8 +554,8 @@ data "aws_iam_policy_document" "dotgithub_github_actions_terraform" {
   # (alias/solidago-tfstate). Its key policy delegates authorization entirely
   # to IAM (see scripts/bootstrap/bootstrap-backend.sh), so this grant is a
   # prerequisite for the S3 Get/Put above to actually succeed, not a
-  # separate permission — same TerraformStateKMS pattern the app deploy role
-  # above uses for its own state key.
+  # separate permission. Reading state requires kms:Decrypt; writing it
+  # requires kms:GenerateDataKey (S3 SSE-KMS derives a per-object data key).
   statement {
     sid = "TerraformStateKMS"
     actions = [
