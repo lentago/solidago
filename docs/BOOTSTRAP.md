@@ -246,7 +246,7 @@ In your repo → Settings → Rules → Rulesets:
 
 1. Create a new ruleset targeting the `main` branch
 2. Enable **Require a pull request before merging**
-3. Enable **Require status checks to pass** — add the `gate` check. Do not require `Terraform Plan` itself: it is skipped on PRs that change no Terraform, and a required check that never reports holds those PRs forever. `gate` runs on every PR and fails when the plan fails, so requiring it is what blocks a bad plan.
+3. Enable **Require status checks to pass** — add the `gate` check. Do not require `Terraform Plan` itself: it is skipped on PRs that change no Terraform, and a required check that never reports holds those PRs forever. `gate` runs on every PR and fails when the plan, or the `changes` job that decides whether a plan is needed, fails or is cancelled. Requiring it is what blocks a bad plan.
 4. Enable **Block force pushes**
 
 ---
