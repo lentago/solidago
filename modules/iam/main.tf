@@ -278,12 +278,15 @@ resource "aws_iam_role" "github_actions" {
 
 # The app deploy role pushes images and rolls ECS services; it runs no
 # Terraform. Terraform runs on the separate pipeline role below (#55 split), so
-# this role carries no state-bucket or state-key access: a compromised workload
-# repo on the trust list can push an image and roll a service, but cannot read
-# or alter Terraform state. The state grants it once held were removed in #229
-# after IAM Access Advisor and CloudTrail showed no S3 or KMS use by the role
-# and no trusted caller's workflow (all on shared-workflows site-deploy.yml)
-# touches state.
+# this role holds no grant on the state bucket or the state key. The state
+# grants it once held were removed in #229, after IAM Access Advisor and
+# CloudTrail showed no S3 or KMS use by the role and no trusted caller's
+# workflow (all on shared-workflows site-deploy.yml) touches state.
+#
+# That keeps state out of reach only while the roles it can pass (PassRole
+# below: the shared ECS task and execution roles) hold no state grant either:
+# a trusted repo can ship code that runs under the task role. The wider
+# cross-site reach of this one shared role is #237.
 data "aws_iam_policy_document" "github_actions" {
   # ECS deployment permissions
   statement {
