@@ -13,13 +13,30 @@
 #                                           (compose answer, return JSON)
 #
 # Shape mirrors modules/alb-log-shipper (archive_file package, least-privilege
-# role, pre-created log group). Differences: this is Node (not Python), it is
-# reached by a public function URL (auth NONE, CORS-locked to the site origin
-# and rate-capped in the handler) rather than an S3 trigger, and its one secret
-# (the Anthropic key) arrives as a sensitive Terraform variable rather than a
-# Secrets Manager lookup — it is consumed only here, so a direct sensitive var
-# (repo Actions secret → TF_VAR, like grafana_cloud_external_id) is simpler than
-# a Secrets Manager round-trip.
+# role, pre-created log group). Differences: this is Node (not Python), and it
+# is reached by a public function URL (auth NONE, CORS-locked to the site origin
+# and rate-capped in the handler) rather than an S3 trigger.
+#
+# THE KEY IS NOT A TERRAFORM VALUE (#230). The Anthropic key lives in an SSM
+# SecureString at local.api_key_ssm_path, written by hand. Terraform creates
+# neither the parameter nor its value. It only passes the parameter PATH to the
+# function and grants the role read on that one parameter. The handler reads
+# the key on its first request per container. A key passed as a sensitive
+# variable is redacted in plan output but still lands in tfstate (and in every
+# saved plan), which is what this replaced. Same pattern as uvularia's
+# templates/ask-function.
+#
+# Create the parameter once, out of band, with the placeholder, before or after
+# the first apply:
+#
+#   aws ssm put-parameter --type SecureString \
+#     --name /<project>-<environment>-<name>-ask/anthropic-api-key \
+#     --value PLACEHOLDER-set-out-of-band
+#
+# then write the real key (and rotate it later) with the same command plus
+# --overwrite and the key as --value. Until a real key is there, the endpoint
+# answers 502 and the Terraform workflow's post-apply "Check out-of-band
+# secrets" step fails the run (the #213 pattern: present is not the same as set).
 #
 # The handler source is vendored at src/handler.mjs; see its header for the
 # reference-copy sync note.
@@ -31,6 +48,11 @@ data "aws_partition" "current" {}
 locals {
   name          = "${var.project}-${var.environment}-${var.name}-ask"
   log_group_arn = "arn:${data.aws_partition.current.partition}:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project}-${var.environment}-${var.name}-ask"
+
+  # The out-of-band key slot (see the header). A hierarchical parameter name
+  # starts with "/", so the ARN is "...:parameter" + the name.
+  api_key_ssm_path = "/${local.name}/anthropic-api-key"
+  api_key_ssm_arn  = "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.api_key_ssm_path}"
 }
 
 # --- Package the handler ------------------------------------------------------
@@ -69,9 +91,9 @@ resource "aws_iam_role" "this" {
   }
 }
 
-# Write to the function's own CloudWatch log group only (pre-created below).
-# No other AWS access is needed — the only outbound call is to the Anthropic
-# API over the public internet, which needs no IAM.
+# Write to the function's own CloudWatch log group (pre-created below) and
+# read the one SSM parameter that holds the Anthropic key. The Anthropic API
+# call itself goes over the public internet and needs no IAM.
 data "aws_iam_policy_document" "this" {
   statement {
     sid = "WriteOwnLogs"
@@ -80,6 +102,35 @@ data "aws_iam_policy_document" "this" {
       "logs:PutLogEvents",
     ]
     resources = ["${local.log_group_arn}:*"]
+  }
+
+  statement {
+    sid       = "ReadApiKeyParameter"
+    actions   = ["ssm:GetParameter"]
+    resources = [local.api_key_ssm_arn]
+  }
+
+  # SSM decrypts a SecureString on the caller's behalf, which needs kms:Decrypt
+  # on the key behind it (the account's aws/ssm key unless the parameter was
+  # written with --key-id). The conditions bind the grant to SSM decrypting
+  # THIS parameter: SSM passes the parameter ARN as encryption context, so the
+  # role can decrypt nothing else, through SSM or directly.
+  statement {
+    sid       = "DecryptApiKeyViaSSM"
+    actions   = ["kms:Decrypt"]
+    resources = ["arn:${data.aws_partition.current.partition}:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["ssm.${var.aws_region}.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:EncryptionContext:PARAMETER_ARN"
+      values   = [local.api_key_ssm_arn]
+    }
   }
 }
 
@@ -115,9 +166,9 @@ resource "aws_lambda_function" "this" {
 
   environment {
     variables = {
-      ANTHROPIC_API_KEY = var.anthropic_api_key
-      ALLOWED_ORIGIN    = var.allowed_origin
-      DAILY_REQUEST_CAP = tostring(var.daily_request_cap)
+      ANTHROPIC_API_KEY_SSM_PATH = local.api_key_ssm_path
+      ALLOWED_ORIGIN             = var.allowed_origin
+      DAILY_REQUEST_CAP          = tostring(var.daily_request_cap)
     }
   }
 

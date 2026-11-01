@@ -19,3 +19,8 @@ output "role_arn" {
   description = "ARN of the Lambda's least-privilege execution role"
   value       = aws_iam_role.this.arn
 }
+
+output "api_key_ssm_path" {
+  description = "SSM SecureString parameter the handler reads the Anthropic key from. Written out of band, never by Terraform (see the module header)."
+  value       = local.api_key_ssm_path
+}

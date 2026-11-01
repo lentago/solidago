@@ -25,13 +25,6 @@ variable "allowed_origin" {
   type        = string
 }
 
-variable "anthropic_api_key" {
-  description = "Anthropic API key the handler uses to compose answers. Sensitive; supplied by CI from the repo Actions secret ANTHROPIC_API_KEY (TF_VAR_anthropic_api_key), never committed. An empty value deploys a functioning endpoint that returns a 502 until the key is set — set the secret before the apply that creates the function."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "daily_request_cap" {
   description = "Per-warm-container daily cap on composed answers (handler-enforced belt over the Anthropic console spend cap)."
   type        = number

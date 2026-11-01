@@ -44,11 +44,11 @@ grafana_cloud_account_id = ""
 grafana_cloud_external_id = ""
 
 # ── Ask-the-Wiki Lambda (optional) ────────────────────────────────────────────
-# Anthropic API key for the "Ask" answer Lambda (module.ask_pondview).
-# Leave blank to deploy the Lambda in a degraded state (endpoint exists,
-# returns 502 until the key is set). Supply via the ANTHROPIC_API_KEY Actions
-# secret in CI — never commit the real key.
-anthropic_api_key = ""
+# No variable here. The Anthropic key for the "Ask" answer Lambda
+# (module.ask_pondview) is never a Terraform value, so it stays out of state.
+# Write it out of band to the SSM SecureString named by the
+# pondview_ask_api_key_ssm_path output (see modules/ask-lambda/main.tf). Until
+# you do, the endpoint returns 502 and the CI post-apply check fails the run.
 
 # ── Axiom log shipping (optional) ─────────────────────────────────────────────
 # Leave both blank ("") to skip Axiom entirely. When blank, Terraform creates no
