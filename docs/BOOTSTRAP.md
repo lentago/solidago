@@ -159,12 +159,12 @@ Open `environments/dev/terraform.tfvars` in your editor. Each variable has a com
 
 Variables with empty-string defaults (`grafana_cloud_account_id`, `grafana_cloud_external_id`, `anthropic_api_key`) are optional — leave them blank to skip those integrations. Variables with non-empty defaults (`project`, `environment`, `aws_region`) can be left as-is for a standard dev deployment.
 
-Update the backend configuration in `environments/dev/main.tf` to reference your state bucket:
+Update the backend configuration in `environments/dev/backend.tf` to reference your state bucket:
 
 ```hcl
 backend "s3" {
   bucket       = "solidago-tfstate-YOUR_ACCOUNT_ID"
-  key          = "environments/dev/terraform.tfstate"
+  key          = "env/dev/terraform.tfstate"
   region       = "us-east-1"
   use_lockfile = true
   encrypt      = true
@@ -176,7 +176,7 @@ backend "s3" {
 
 ## Step 5: Initial Terraform Apply
 
-This first apply runs from your local machine using your AWS CLI profile. It creates all infrastructure including the OIDC provider and app deploy IAM role.
+This first apply runs from your local machine using your AWS CLI profile. It creates all infrastructure, including the GitHub OIDC provider and both CI roles: the app deploy role and the Terraform pipeline role (verified in Step 7).
 
 ```bash
 cd environments/dev
@@ -190,7 +190,8 @@ This will take 10-15 minutes. Notable resources that take time: RDS instance, El
 
 **Save the outputs.** You'll need several values in the next steps:
 - `route53_name_servers` — for DNS delegation
-- `github_actions_role_arn` — for verifying OIDC setup
+- `github_actions_role_arn` — the app deploy role, for your workload repositories' deploy workflows
+- `github_actions_terraform_role_arn` — the Terraform pipeline role, for `.github/workflows/terraform.yml`
 
 ---
 
@@ -210,124 +211,24 @@ dig NS yourdomain.com
 
 ---
 
-## Step 7: Create the Terraform Pipeline IAM Role
+## Step 7: Verify the Terraform Pipeline IAM Role
 
-The Terraform infrastructure pipeline uses a separate IAM role from the app deploy pipeline. This role is created manually, then imported into Terraform state.
+The Terraform infrastructure pipeline uses a separate IAM role from the app deploy pipeline: `<project>-<environment>-github-actions-terraform`. `modules/iam` declares the role, its policy and the attachment, so **the first apply in Step 5 created them**. That apply ran from your machine with your own credentials, so nothing has to be made by hand and nothing needs `terraform import`. Do not create the role with the AWS CLI. If you do, the apply fails with `EntityAlreadyExists`, or, if you create it after the apply, the CLI fails.
 
-### 7a. Create the OIDC trust policy
-
-```bash
-cat > /tmp/terraform-role-trust.json << 'EOF'
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Federated": "arn:aws:iam::YOUR_ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
-      },
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Condition": {
-        "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:YOUR_ORG/solidago:environment:terraform"
-        }
-      }
-    }
-  ]
-}
-EOF
-```
-
-Replace `YOUR_ACCOUNT_ID` and `YOUR_ORG` with your values.
-
-### 7b. Create the permissions policy
-
-```bash
-cat > /tmp/terraform-role-policy.json << 'EOF'
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "TerraformInfraManagement",
-      "Effect": "Allow",
-      "Action": [
-        "ec2:*",
-        "elasticloadbalancing:*",
-        "ecs:*",
-        "ecr:*",
-        "rds:*",
-        "elasticache:*",
-        "route53:*",
-        "acm:*",
-        "iam:*",
-        "kms:*",
-        "cloudwatch:*",
-        "logs:*",
-        "cloudtrail:*",
-        "sns:*",
-        "config:*",
-        "s3:*",
-        "secretsmanager:*",
-        "budgets:*",
-        "waf-regional:*",
-        "wafv2:*",
-        "application-autoscaling:*"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "CallerIdentity",
-      "Effect": "Allow",
-      "Action": "sts:GetCallerIdentity",
-      "Resource": "*"
-    }
-  ]
-}
-EOF
-```
-
-### 7c. Create the role and attach the policy
-
-```bash
-aws iam create-role \
-  --role-name solidago-dev-github-actions-terraform \
-  --assume-role-policy-document file:///tmp/terraform-role-trust.json
-
-aws iam create-policy \
-  --policy-name solidago-dev-github-actions-terraform \
-  --policy-document file:///tmp/terraform-role-policy.json
-
-# Use the policy ARN from the create-policy output
-aws iam attach-role-policy \
-  --role-name solidago-dev-github-actions-terraform \
-  --policy-arn "arn:aws:iam::YOUR_ACCOUNT_ID:policy/solidago-dev-github-actions-terraform"
-```
-
-### 7d. Import into Terraform
+Check that the role exists and that its trust names your repository:
 
 ```bash
 cd environments/dev
 
-terraform import \
-  module.iam.aws_iam_role.github_actions_terraform \
-  solidago-dev-github-actions-terraform
+terraform output github_actions_terraform_role_arn
 
-terraform import \
-  module.iam.aws_iam_policy.github_actions_terraform \
-  "arn:aws:iam::YOUR_ACCOUNT_ID:policy/solidago-dev-github-actions-terraform"
-
-terraform import \
-  module.iam.aws_iam_role_policy_attachment.github_actions_terraform \
-  "solidago-dev-github-actions-terraform/arn:aws:iam::YOUR_ACCOUNT_ID:policy/solidago-dev-github-actions-terraform"
+aws iam get-role \
+  --role-name "$(terraform output -raw github_actions_terraform_role_arn | cut -d/ -f2)" \
+  --query 'Role.AssumeRolePolicyDocument.Statement[0].Condition'
+# Expected: the sub condition is repo:YOUR_ORG/YOUR_REPO:environment:terraform
 ```
 
-Verify the import is clean:
-
-```bash
-terraform plan
-# Expected: No changes (or unrelated pending changes)
-```
+The `sub` comes from the `github_org` and `github_repo` inputs of `module.iam` in `environments/dev/main.tf`. If it names the wrong repository, fix those inputs and apply again. Then put the role ARN in both `role-to-assume` lines of `.github/workflows/terraform.yml` (see the ADOPTION swap list).
 
 ---
 
@@ -345,7 +246,7 @@ In your repo → Settings → Rules → Rulesets:
 
 1. Create a new ruleset targeting the `main` branch
 2. Enable **Require a pull request before merging**
-3. Enable **Require status checks to pass** — add the `Terraform Plan` check
+3. Enable **Require status checks to pass** — add the `gate` check. Do not require `Terraform Plan` itself: it is skipped on PRs that change no Terraform, and a required check that never reports holds those PRs forever. `gate` runs on every PR and fails when the plan, or the `changes` job that decides whether a plan is needed, fails or is cancelled. Requiring it is what blocks a bad plan.
 4. Enable **Block force pushes**
 
 ---
