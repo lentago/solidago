@@ -217,7 +217,9 @@ jobs:
           # SSM SecureString slots to check; keep in step with the
           # pondview_ask_api_key_ssm_path output (modules/ask-lambda).
           SSM_SLOTS: /solidago-dev-pondview-ask/anthropic-api-key
-        run: ./scripts/ci/check-out-of-band-secrets.sh $SSM_SLOTS
+        run: |
+          read -ra slots <<< "$SSM_SLOTS"
+          ./scripts/ci/check-out-of-band-secrets.sh "${slots[@]}"
 
   # Single required status check for the terraform pipeline. Runs on every PR
   # (if: always()) so the ruleset can require exactly `gate`: it reports green

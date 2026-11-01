@@ -144,6 +144,10 @@ module "iam" {
     "lentago@297986315/site-pondviewlane-com@1304395322",
   ]
 
+  # Hand-written SSM slots the apply job's post-apply check reads (#230); keep
+  # in step with SSM_SLOTS in .github/workflows/terraform.yml.
+  out_of_band_secret_parameter_arns = [module.ask_pondview.api_key_ssm_arn]
+
   # Phase 4: grant ECS roles access to RDS-managed secrets
   rds_managed_secret_access = true
 

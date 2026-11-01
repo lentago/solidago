@@ -7,7 +7,7 @@
 # when a slot is:
 #
 #   - missing,
-#   - encrypted with the AWS-managed aws/ssm key, whose key policy lets ANY
+#   - encrypted with an AWS-managed key (aws/ssm), whose key policy lets ANY
 #     principal in the account with ssm:GetParameter decrypt it (that includes
 #     ReadOnlyAccess roles); slots must use the platform CMK
 #     (alias/<project>-<environment>-main), which delegates to IAM, or
@@ -56,8 +56,14 @@ for slot in "$@"; do
     echo "::error::Out-of-band secret $slot is missing. Create it with aws ssm put-parameter --type SecureString --key-id alias/<project>-<environment>-main (see modules/ask-lambda/main.tf)."
     rc=1; continue
   fi
-  if [ "$key_id" = "alias/aws/ssm" ]; then
-    echo "::error::Out-of-band secret $slot is encrypted with alias/aws/ssm, which any principal with ssm:GetParameter can decrypt. Rewrite it with --overwrite --key-id alias/<project>-<environment>-main."
+  # KeyId comes back as whatever the writer passed (alias, key ID or ARN), so
+  # ask KMS who manages the key rather than matching the alias string.
+  if ! manager=$(aws_retry aws kms describe-key --key-id "$key_id" \
+      --query KeyMetadata.KeyManager --output text); then
+    echo "::error::Out-of-band secret $slot: could not describe its key $key_id (see the error above)."
+    rc=1
+  elif [ "$manager" != "CUSTOMER" ]; then
+    echo "::error::Out-of-band secret $slot is encrypted with an AWS-managed key ($key_id), which any principal with ssm:GetParameter can decrypt. Rewrite it with --overwrite --key-id alias/<project>-<environment>-main."
     rc=1
   fi
   if ! value=$(aws_retry aws ssm get-parameter --name "$slot" --with-decryption \
@@ -65,7 +71,10 @@ for slot in "$@"; do
     echo "::error::Out-of-band secret $slot: could not read it (see the error above)."
     rc=1; continue
   fi
-  [ -n "$value" ] && echo "::add-mask::$value"
+  # Mask only inside Actions: elsewhere this line would print the value.
+  if [ -n "${GITHUB_ACTIONS:-}" ] && [ -n "$value" ]; then
+    echo "::add-mask::$value"
+  fi
   case "$value" in
     "" | PLACEHOLDER*)
       echo "::error::Out-of-band secret $slot still holds its placeholder. Write the real value with aws ssm put-parameter --overwrite."
