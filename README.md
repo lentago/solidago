@@ -176,14 +176,14 @@ Both pipelines authenticate via GitHub's OIDC provider. No AWS access keys in Gi
 
 ### Terraform CI Roles: Plan vs Apply
 
-The Terraform pipeline uses two roles, one per GitHub environment (#225, #156):
+The Terraform pipeline uses two roles, one per GitHub environment (#225, #156). This is the target state. Until all three bootstrap steps below have landed, the plan still runs in the `terraform` environment on the write role, and that environment has no branch policy yet.
 
 | Role | Trusted sub | Permissions | Who can mint the sub |
 |---|---|---|---|
 | `solidago-dev-github-actions-terraform-plan` | `repo:lentago/solidago:environment:terraform-plan` | AWS `ReadOnlyAccess`, plus state read, the S3-native lockfile, and this stack's secret values | the plan job on pull requests; the environment has no branch policy, because PR refs must reach it |
 | `solidago-dev-github-actions-terraform` | `repo:lentago/solidago:environment:terraform` | write (the apply) | the apply job on `main` only: the `terraform` environment carries a deployment branch policy (`main`, admins cannot bypass) |
 
-The environment-form sub carries no ref, so IAM alone cannot tell `main` from a branch. The `terraform` environment's branch policy is the guard: it is repo configuration that no PR can weaken, which an `if:` in the workflow file is not (#156). The bare subs are deliberately not trusted: every pull-request job with `id-token: write` mints `…:pull_request` and every main-context job mints `…:ref:refs/heads/main`, including the comment-triggered Claude responder in `claude.yml`. An apply attempted under the plan role is denied on its first mutating call, and each Terraform job logs `aws sts get-caller-identity` so the run shows which role it got. The environments and the branch policy are codified in `lentago/.github` (lentago/.github#311).
+The environment-form sub carries no ref, so IAM alone cannot tell `main` from a branch. The `terraform` environment's branch policy is the guard: it is repo configuration that no PR can weaken, which an `if:` in the workflow file is not (#156). The bare subs are deliberately not trusted: every pull-request job with `id-token: write` mints `…:pull_request` and every main-context job mints `…:ref:refs/heads/main`, including the comment-triggered Claude responder in `claude.yml`. Read-only means the plan role cannot write. It does read this stack's secret values, because refresh needs them and the state it reads holds them anyway; treat it as a credential that can see secrets. An apply attempted under the plan role is denied on its first mutating call, and each Terraform job logs `aws sts get-caller-identity` so the run shows which role it got. The environments and the branch policy are codified in `lentago/.github` (lentago/.github#311).
 
 **Bootstrap ordering.** Both roles are themselves Terraform-managed, and the plan role does not exist until an apply creates it, under the existing role. So the split lands in two merges, then one setting:
 
