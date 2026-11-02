@@ -276,11 +276,17 @@ resource "aws_iam_role" "github_actions" {
   }
 }
 
-# GitHub Actions needs broad-ish permissions because it runs Terraform
-# (which creates/modifies/destroys infrastructure) and deploys to ECS.
-# In a real org, you'd scope this more tightly — perhaps separate roles
-# for "terraform plan" (read-only) vs "terraform apply" (write).
-# For this environment, we give it the permissions it needs for Phases 3-7.
+# The app deploy role pushes images and rolls ECS services; it runs no
+# Terraform. Terraform runs on the separate pipeline role below (#55 split), so
+# this role holds no grant on the state bucket or the state key. The state
+# grants it once held were removed in #229, after IAM Access Advisor and
+# CloudTrail showed no S3 or KMS use by the role and no trusted caller's
+# workflow (all on shared-workflows site-deploy.yml) touches state.
+#
+# That keeps state out of reach only while the roles it can pass (PassRole
+# below: the shared ECS task and execution roles) hold no state grant either:
+# a trusted repo can ship code that runs under the task role. The wider
+# cross-site reach of this one shared role is #237.
 data "aws_iam_policy_document" "github_actions" {
   # ECS deployment permissions
   statement {
@@ -338,39 +344,6 @@ data "aws_iam_policy_document" "github_actions" {
       aws_iam_role.ecs_task.arn,
     ]
   }
-
-  # Terraform state access — needs to read/write the S3 backend
-  statement {
-    sid = "TerraformStateS3"
-    actions = [
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject",
-      "s3:ListBucket",
-    ]
-    resources = [
-      "arn:aws:s3:::solidago-tfstate-${var.aws_account_id}",
-      "arn:aws:s3:::solidago-tfstate-${var.aws_account_id}/*",
-    ]
-  }
-
-  # The state bucket is encrypted with a dedicated, bootstrap-managed CMK
-  # (alias/solidago-tfstate). Reading state requires kms:Decrypt; writing it
-  # requires kms:GenerateDataKey (S3 SSE-KMS derives a per-object data key).
-  # Scoped to that key only — this role gets no access to the platform's
-  # main encryption key. The Terraform pipeline role already holds kms:* and
-  # so is covered without a separate statement.
-  statement {
-    sid = "TerraformStateKMS"
-    actions = [
-      "kms:Encrypt",
-      "kms:Decrypt",
-      "kms:GenerateDataKey",
-      "kms:DescribeKey",
-    ]
-    resources = [var.tfstate_kms_key_arn]
-  }
-
 }
 
 resource "aws_iam_policy" "github_actions" {
@@ -396,23 +369,22 @@ resource "aws_iam_role_policy_attachment" "github_actions" {
 # management permissions because Terraform needs to create/modify/destroy
 # AWS resources across many services.
 #
-# This is the APPLY (write) role. Since #225 the pipeline is split: the
-# pull_request plan job assumes the read-only github_actions_terraform_plan
-# role below, and only the apply job (push to main / workflow_dispatch on
-# main) assumes this one. This separates infrastructure management
-# permissions from app deploy permissions (blast radius reduction), and
-# keeps write credentials out of PR runs.
+# This is the APPLY (write) role. Since #225/#156 the pipeline is split by
+# GitHub environment: the plan job runs in `terraform-plan` and assumes the
+# read-only github_actions_terraform_plan role below; only the apply job
+# (push to main / workflow_dispatch on main) runs in `terraform` and assumes
+# this one. This separates infrastructure management permissions from app
+# deploy permissions (blast radius reduction), and keeps write credentials
+# out of PR runs.
 #
-# Trust is two subs, OR-matched by StringEquals, during the #225 two-step
-# rollout (see README "Terraform CI roles: plan vs apply"):
-#   - repo:<org>/<repo>:ref:refs/heads/main — the target posture. A job with
-#     no `environment:` key running on main (push or workflow_dispatch)
-#     mints this sub; a PR branch cannot.
-#   - repo:<org>/<repo>:environment:terraform — TRANSITIONAL. The current
-#     terraform.yml runs both jobs in the `terraform` environment, so the
-#     plan on the PR that adds the plan role, and the apply on its merge,
-#     still assume this role under that sub. Step 2 of #225 moves both jobs
-#     off the environment and drops this entry.
+# Trust is the sub GitHub mints for a job that declares `environment:
+# terraform`. The sub carries no ref, so IAM cannot tell main from a branch;
+# the guard is the environment's deployment branch policy (main only, admins
+# cannot bypass), which is repo configuration a PR cannot weaken. It is set
+# once no plan uses the environment and codified in lentago/.github#311 (see
+# README "Terraform CI roles: plan vs apply"). Deliberately NOT the bare
+# ref:refs/heads/main sub: every main-context job with id-token: write mints
+# that one, including claude.yml's comment-triggered responder.
 # =============================================================================
 
 data "aws_iam_policy_document" "github_actions_terraform_assume" {
@@ -433,10 +405,7 @@ data "aws_iam_policy_document" "github_actions_terraform_assume" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/main",
-        "repo:${var.github_org}/${var.github_repo}:environment:terraform", # transitional — removed in #225 step 2
-      ]
+      values   = ["repo:${var.github_org}/${var.github_repo}:environment:terraform"]
     }
   }
 }
@@ -497,6 +466,30 @@ data "aws_iam_policy_document" "github_actions_terraform" {
     actions   = ["sts:GetCallerIdentity"]
     resources = ["*"]
   }
+
+  # The apply job's post-apply "Check out-of-band secrets" step (#230, the #213
+  # pattern) reads each hand-written SSM slot to confirm it holds a real value
+  # on the platform CMK. It reads into memory and tests shape only; nothing is
+  # stored or printed. kms:Decrypt and kms:DescribeKey are already covered by
+  # kms:* above. DescribeParameters (to read the slot's
+  # KeyId) has no resource-level scoping, and returns metadata only. The read
+  # is on exactly the listed slots (var.out_of_band_secret_parameter_arns).
+  dynamic "statement" {
+    for_each = length(var.out_of_band_secret_parameter_arns) > 0 ? [1] : []
+    content {
+      sid       = "OutOfBandSecretCheck"
+      effect    = "Allow"
+      actions   = ["ssm:GetParameter"]
+      resources = var.out_of_band_secret_parameter_arns
+    }
+  }
+
+  statement {
+    sid       = "OutOfBandSecretDescribe"
+    effect    = "Allow"
+    actions   = ["ssm:DescribeParameters"]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_policy" "github_actions_terraform" {
@@ -517,10 +510,19 @@ resource "aws_iam_role_policy_attachment" "github_actions_terraform" {
 # =============================================================================
 # GITHUB ACTIONS TERRAFORM PLAN ROLE (read-only)
 #
-# Assumed by terraform.yml's plan job on pull_request (#225). Trust is the
-# fixed sub GitHub mints for any pull_request-triggered job WITHOUT an
-# `environment:` key — so a PR run can only ever get these read-only
-# credentials, never the apply role above. Fork PRs get no id-token at all.
+# Assumed by terraform.yml's plan job on pull_request (#225, #156). Trust is
+# the sub GitHub mints for a job that declares `environment: terraform-plan`,
+# which only the plan job does. Not the bare pull_request sub: every PR job
+# with id-token: write mints that one (claude.yml, claude-review.yml). The
+# `terraform-plan` environment has no branch policy, because PR refs must
+# reach it; a workflow edit on any branch can still declare it and get these
+# read-only credentials, never the apply role above. Fork PRs get no
+# id-token at all.
+#
+# Known residual: the shared state bucket uses an S3 Bucket Key, so the KMS
+# encryption context is the bucket, not the object, and Decrypt on the state
+# CMK cannot be narrowed to this stack's state. ReadOnlyAccess's s3:Get* then
+# reaches the other stacks' state objects in the bucket. Tracked in #240.
 #
 # Permissions = AWS-managed ReadOnlyAccess (refresh reads across every
 # service the stack uses) plus the few things a plan needs that it lacks:
@@ -554,7 +556,7 @@ data "aws_iam_policy_document" "github_actions_terraform_plan_assume" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_org}/${var.github_repo}:pull_request"]
+      values   = ["repo:${var.github_org}/${var.github_repo}:environment:terraform-plan"]
     }
   }
 }
@@ -613,9 +615,14 @@ data "aws_iam_policy_document" "github_actions_terraform_plan" {
   }
 
   statement {
-    sid       = "StackSecretValues"
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = ["arn:aws:secretsmanager:${var.aws_region}:${var.aws_account_id}:secret:${var.project}-${var.environment}-*"]
+    sid     = "StackSecretValues"
+    actions = ["secretsmanager:GetSecretValue"]
+    # Both naming forms in modules/secrets: <project>-<env>/db-credentials and
+    # <project>-<env>-axiom-*. RDS-managed rds!db-* secrets stay out of reach.
+    resources = [
+      "arn:aws:secretsmanager:${var.aws_region}:${var.aws_account_id}:secret:${var.project}-${var.environment}-*",
+      "arn:aws:secretsmanager:${var.aws_region}:${var.aws_account_id}:secret:${var.project}-${var.environment}/*",
+    ]
   }
 
   statement {
@@ -730,8 +737,8 @@ data "aws_iam_policy_document" "dotgithub_github_actions_terraform" {
   # (alias/solidago-tfstate). Its key policy delegates authorization entirely
   # to IAM (see scripts/bootstrap/bootstrap-backend.sh), so this grant is a
   # prerequisite for the S3 Get/Put above to actually succeed, not a
-  # separate permission — same TerraformStateKMS pattern the app deploy role
-  # above uses for its own state key.
+  # separate permission. Reading state requires kms:Decrypt; writing it
+  # requires kms:GenerateDataKey (S3 SSE-KMS derives a per-object data key).
   statement {
     sid = "TerraformStateKMS"
     actions = [
