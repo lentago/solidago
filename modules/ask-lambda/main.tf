@@ -226,9 +226,16 @@ resource "aws_dynamodb_table" "this" {
 # --- Function + its log group ------------------------------------------------
 # Pre-create the log group (with retention) rather than let Lambda create it
 # lazily, so the execution role never needs logs:CreateLogGroup.
+#
+# Each ask_query line carries the visitor's question (up to 500 characters),
+# which can hold an identifying detail. With var.log_kms_key_arn set, reading
+# the group also needs kms:Decrypt on that key, so ReadOnlyAccess principals
+# such as the Terraform plan role can no longer read it (#246, ADR-0009). The
+# function itself needs no KMS permission; CloudWatch Logs encrypts on write.
 resource "aws_cloudwatch_log_group" "this" {
   name              = "/aws/lambda/${local.name}"
   retention_in_days = var.log_retention_days
+  kms_key_id        = var.log_kms_key_arn
 
   tags = {
     Name = "${local.name}-logs"

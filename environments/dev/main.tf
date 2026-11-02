@@ -468,6 +468,10 @@ module "ask_pondview" {
 
   # Errors, Throttles and URL 5xx alarms (#241) go to the platform alert topic.
   alarm_topic_arn = module.monitoring.sns_topic_arn
+
+  # The log holds visitors' question text: the one log group on the platform
+  # CMK (docs/decisions/0009, #246).
+  log_kms_key_arn = module.kms.key_arn
 }
 
 # --- Apex domain: pondviewlane.com (public launch) ---

@@ -77,6 +77,12 @@ variable "log_retention_days" {
   default     = 30
 }
 
+variable "log_kms_key_arn" {
+  description = "CMK for the Lambda's log group, or null for the service default. The log carries each visitor's question text, so solidago-dev passes the platform CMK (docs/decisions/0009); the key policy must allow the logs service principal."
+  type        = string
+  default     = null
+}
+
 variable "lambda_timeout" {
   description = "Lambda timeout in seconds. One Anthropic call per invocation; the 30s default suits a model without extended thinking, and a caller using one sets more (pondview: 120). The handler aborts the model call 10s before this, so it can log the timeout and answer 504."
   type        = number
