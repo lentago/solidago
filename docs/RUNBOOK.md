@@ -248,12 +248,15 @@ aws secretsmanager delete-secret --secret-id <db-credentials arn> \
 Five alarms named `solidago-dev-cis-*` (#244, CIS AWS Foundations 3.x) watch the
 trail's CloudWatch Logs copy, `/aws/cloudtrail/solidago-dev-trail`, and email
 the alert topic on ALARM and on OK. Teardown leaves them in place. To see what
-fired one, query that log group over the alarm's 5-minute window, for example:
+fired one, query that log group over the alarm's 5-minute window, then fetch
+the results (a few seconds later; repeat until `status` is `Complete`):
 
 ```bash
-aws logs start-query --log-group-name /aws/cloudtrail/solidago-dev-trail \
+qid=$(aws logs start-query --log-group-name /aws/cloudtrail/solidago-dev-trail \
   --start-time <epoch> --end-time <epoch> \
-  --query-string 'fields eventTime, eventName, userIdentity.arn, sourceIPAddress, errorCode | sort eventTime desc | limit 50'
+  --query-string 'fields eventTime, eventName, userIdentity.arn, sourceIPAddress, errorCode | sort eventTime desc | limit 50' \
+  --query queryId --output text)
+aws logs get-query-results --query-id "$qid"
 ```
 
 | Alarm (`solidago-dev-cis-…`) | What to do |

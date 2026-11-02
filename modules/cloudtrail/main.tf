@@ -84,9 +84,10 @@ moved {
 # CLOUDWATCH LOGS DELIVERY
 #
 # Metric filters read CloudWatch Logs, not S3, so the trail also delivers to
-# this group. Volume: ~23 MB/day of events (measured 2026-11-01), ~0.7 GB a
-# month, which keeps the account inside the 5 GB/month CloudWatch Logs free
-# tier alongside its other groups (~2.9 GB/month). The retention is short
+# this group. Volume: ~0.63 GB of events a month (the S3 archive for
+# 2026-10-03..11-01, 109 MB gzipped at the measured 5.5x ratio; the busiest
+# day was 4.6 MB gzipped), which keeps the account inside the 5 GB/month
+# CloudWatch Logs free tier alongside its other groups (~2.9 GB/month). The retention is short
 # because S3 holds the full, validated record; this copy only feeds alarms
 # and recent-history queries.
 # -----------------------------------------------------------------------------
