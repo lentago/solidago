@@ -21,3 +21,13 @@ output "s3_key_prefix" {
   description = "S3 key prefix where CloudTrail logs are delivered"
   value       = var.s3_key_prefix
 }
+
+output "log_group_name" {
+  description = "CloudWatch Logs group the trail delivers to (feeds the CIS 3.x metric filters)."
+  value       = aws_cloudwatch_log_group.trail.name
+}
+
+output "cis_alarm_names" {
+  description = "Names of the CIS 3.x CloudTrail alarms."
+  value       = [for a in aws_cloudwatch_metric_alarm.cis : a.alarm_name]
+}
