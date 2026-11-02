@@ -35,6 +35,7 @@ The platform's log groups and what they hold:
 | `/ecs/solidago-dev-app`, `/ecs/solidago-dev-lentago`, `/ecs/solidago-dev-pondview` | `ecs`, `site` | The FireLens log router's own output; application logs go to Axiom while Axiom shipping is on |
 | `/aws/vpc/flow-logs/solidago-dev` | `vpc` | VPC flow records: addresses, ports, byte counts |
 | `/aws/cloudtrail/solidago-dev-trail` | `cloudtrail` (#244) | The management-event copy that feeds the CIS alarms; S3 holds the encrypted, validated original |
+| `aws-waf-logs-solidago-dev` | `waf` (#245, added after acceptance) | WAF request records: client IP and country, URI and query string, headers with `authorization` and `cookie` redacted, the matching rule. Request metadata, no bodies, so it falls under decision 1 |
 
 Container Insights' performance groups are created by AWS, not by this
 repository, and are out of scope.

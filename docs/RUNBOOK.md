@@ -267,6 +267,27 @@ aws logs get-query-results --query-id "$qid"
 | `cloudtrail-config-change` | Expected only when a merge changes `modules/cloudtrail`. Otherwise run `aws cloudtrail get-trail-status --name solidago-dev-trail`: `StopLogging` is the classic cover-up step. |
 | `unauthorized-api-calls` | Fires at 5 or more in 5 minutes; the AWS Config recorder's own probing stays below that. Group the events by `userIdentity.arn`: a CI role hitting a new grant gap after a merge is a bug to fix in code, anything unfamiliar is an incident. |
 
+## WAF request log
+
+Every request the web ACL `solidago-dev-waf` evaluates is logged to
+`aws-waf-logs-solidago-dev` for 30 days (#245). That includes allowed requests,
+not only blocked and counted ones. The `authorization` and `cookie` headers are
+redacted. To see what the WAF blocked and why, run the same start-query /
+get-query-results pair as above against that group, for example:
+
+```bash
+qid=$(aws logs start-query --log-group-name aws-waf-logs-solidago-dev \
+  --start-time <epoch> --end-time <epoch> \
+  --query-string 'filter action = "BLOCK" | stats count(*) as n by terminatingRuleId, httpRequest.clientIp, httpRequest.uri | sort n desc | limit 50' \
+  --query queryId --output text)
+aws logs get-query-results --query-id "$qid"
+```
+
+A legitimate visitor blocked by a managed rule shows up here with the rule
+group as `terminatingRuleId`; the rule inside the group is under
+`ruleGroupList`. Excluding that rule (an `override_action` or `rule_action_override` in
+`modules/waf`) is a code change, never a console edit.
+
 ---
 
 ## Cost reference

@@ -62,7 +62,7 @@ A three-tier web application running on AWS, fully managed by Terraform:
 
 **Security:** WAFv2 Web ACL on the ALB with AWS Managed Rules (Common Rule Set, Known Bad Inputs, IP Reputation List) and a custom rate-limiting rule. KMS customer-managed key for encryption at rest. Security groups with least-privilege chaining — each tier can only reach the tier it needs.
 
-**Observability:** CloudWatch dashboard covering ECS, ALB, WAF, RDS, ElastiCache, and NAT Gateway metrics. CloudWatch alarms with SNS email notifications. CloudTrail for API audit logging, with CIS 3.x metric-filter alarms on root use, sign-in without MFA, IAM and trail changes, and unauthorized calls (see the [runbook](docs/RUNBOOK.md#security-alarms-cloudtrail)). AWS Config for compliance rules.
+**Observability:** CloudWatch dashboard covering ECS, ALB, WAF, RDS, ElastiCache, and NAT Gateway metrics. CloudWatch alarms with SNS email notifications. CloudTrail for API audit logging, with CIS 3.x metric-filter alarms on root use, sign-in without MFA, IAM and trail changes, and unauthorized calls (see the [runbook](docs/RUNBOOK.md#security-alarms-cloudtrail)). A 30-day WAF request log (see the [runbook](docs/RUNBOOK.md#waf-request-log)). AWS Config for compliance rules.
 
 **Cost Management:** AWS Budgets with SNS alerts at 50%, 80%, and 100% of a $100/month threshold.
 
