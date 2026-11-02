@@ -425,7 +425,8 @@ resource "aws_iam_role" "github_actions_terraform" {
 # and grants `<service>:*` on each by design; trivy singles out `s3:*`. #180
 # item 2 was resolved by #225 as a plan/apply SPLIT, not per-resource least
 # privilege: write credentials (including `s3:*`) live only on this role,
-# which only main can assume; PR plans run on the read-only plan role below.
+# which only main can assume: the `terraform` environment carries a main-only
+# branch policy (#156). PR plans run on the read-only plan role below.
 #trivy:ignore:AVD-AWS-0345
 data "aws_iam_policy_document" "github_actions_terraform" {
   statement {
