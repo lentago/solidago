@@ -58,11 +58,14 @@ part of that decision.
    people meant to.
 2. **Use the platform CMK for the Ask log group**
    (`module.ask_pondview`, `log_kms_key_arn = module.kms.key_arn`). It is the
-   one group whose content the public writes. Using the key takes read-only
-   principals, including the plan role, off the list of readers of visitors'
-   questions, at no added cost. Writing needs no change: CloudWatch Logs
-   encrypts on write under the key policy above, and the function's role
-   needs no KMS permission.
+   one group whose content the public writes. From the apply on, every new
+   event is under the key, so read-only principals, including the plan role,
+   cannot read visitors' questions written after it. Events already in the
+   group stay on the default key and stay readable to them until the 30-day
+   retention ages them out. That was about 25 KB on 2026-11-02, written while
+   the function answered 502. There is no added cost. Writing needs no
+   change: CloudWatch Logs encrypts on write under the key policy above, and
+   the function's role needs no KMS permission.
 
 ## Consequences
 
