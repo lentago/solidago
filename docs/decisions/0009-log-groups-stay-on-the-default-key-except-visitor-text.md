@@ -35,6 +35,7 @@ The platform's log groups and what they hold:
 | `/ecs/solidago-dev-app`, `/ecs/solidago-dev-lentago`, `/ecs/solidago-dev-pondview` | `ecs`, `site` | The FireLens log router's own output; application logs go to Axiom while Axiom shipping is on |
 | `/aws/vpc/flow-logs/solidago-dev` | `vpc` | VPC flow records: addresses, ports, byte counts |
 | `/aws/cloudtrail/solidago-dev-trail` | `cloudtrail` (#244) | The management-event copy that feeds the CIS alarms; S3 holds the encrypted, validated original |
+| `aws-waf-logs-solidago-dev` | `waf` (#245, added after acceptance) | WAF request records: client IP and country, URI and query string, headers with `authorization` and `cookie` redacted, the matching rule. No bodies. Falls under decision 1: no site behind the ALB has a GET form (the report and contact forms POST to external endpoints, and Ask POSTs to its Lambda URL, not the ALB), so no visitor-typed text reaches a URL; and the same URI, query string and client IP are already in the ALB access logs, an SSE-S3 bucket that read-only principals can read. If a site adds a GET form (a search box, say), move this group to the CMK |
 
 Container Insights' performance groups are created by AWS, not by this
 repository, and are out of scope.

@@ -479,6 +479,64 @@ data "aws_iam_policy_document" "github_actions_terraform" {
     ]
   }
 
+  # GuardDuty (#243): the detector's lifecycle and its protection-plan
+  # settings, which the provider drives through UpdateDetector. A region holds
+  # one detector per account, and its ID is generated, so the scope is this
+  # account's detectors rather than a name prefix. Create and List take no
+  # resource. Not granted: filters (which can auto-archive findings), IP and
+  # threat-intel sets, publishing destinations, members and finding
+  # actions; nothing here manages them. The service-linked roles GuardDuty
+  # creates on enable come under iam:* above.
+  statement {
+    sid    = "GuardDutyDetectorCreate"
+    effect = "Allow"
+    actions = [
+      "guardduty:CreateDetector",
+      "guardduty:ListDetectors",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "GuardDutyDetector"
+    effect = "Allow"
+    actions = [
+      "guardduty:GetDetector",
+      "guardduty:UpdateDetector",
+      "guardduty:DeleteDetector",
+      "guardduty:TagResource",
+      "guardduty:UntagResource",
+      "guardduty:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:guardduty:${var.aws_region}:${var.aws_account_id}:detector/*",
+    ]
+  }
+
+  # EventBridge (#243): rules on the default bus and their targets, limited to
+  # this stack's name prefix. The first rule forwards GuardDuty findings to the
+  # alert topic. Rule and target calls are all authorized on the rule ARN.
+  statement {
+    sid    = "StackEventBridgeRules"
+    effect = "Allow"
+    actions = [
+      "events:PutRule",
+      "events:DescribeRule",
+      "events:DeleteRule",
+      "events:EnableRule",
+      "events:DisableRule",
+      "events:PutTargets",
+      "events:RemoveTargets",
+      "events:ListTargetsByRule",
+      "events:TagResource",
+      "events:UntagResource",
+      "events:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:events:${var.aws_region}:${var.aws_account_id}:rule/${var.project}-${var.environment}-*",
+    ]
+  }
+
   statement {
     sid       = "CallerIdentity"
     effect    = "Allow"

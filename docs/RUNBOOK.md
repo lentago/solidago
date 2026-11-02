@@ -267,6 +267,27 @@ aws logs get-query-results --query-id "$qid"
 | `cloudtrail-config-change` | Expected only when a merge changes `modules/cloudtrail`. Otherwise run `aws cloudtrail get-trail-status --name solidago-dev-trail`: `StopLogging` is the classic cover-up step. |
 | `unauthorized-api-calls` | Fires at 5 or more in 5 minutes; the AWS Config recorder's own probing stays below that. Group the events by `userIdentity.arn`: a CI role hitting a new grant gap after a merge is a bug to fix in code, anything unfamiliar is an incident. |
 
+## WAF request log
+
+Every request the web ACL `solidago-dev-waf` evaluates is logged to
+`aws-waf-logs-solidago-dev` for 30 days (#245). That includes allowed requests,
+not only blocked and counted ones. The `authorization` and `cookie` headers are
+redacted. To see what the WAF blocked and why, run the same start-query /
+get-query-results pair as above against that group, for example:
+
+```bash
+qid=$(aws logs start-query --log-group-name aws-waf-logs-solidago-dev \
+  --start-time <epoch> --end-time <epoch> \
+  --query-string 'filter action = "BLOCK" | stats count(*) as n by terminatingRuleId, httpRequest.clientIp, httpRequest.uri | sort n desc | limit 50' \
+  --query queryId --output text)
+aws logs get-query-results --query-id "$qid"
+```
+
+A legitimate visitor blocked by a managed rule shows up here with the rule
+group as `terminatingRuleId`; the rule inside the group is under
+`ruleGroupList`. Excluding that rule (an `override_action` or `rule_action_override` in
+`modules/waf`) is a code change, never a console edit.
+
 ## GuardDuty findings
 
 GuardDuty (#243) emails the alert topic for every finding of severity 4
@@ -283,7 +304,7 @@ aws guardduty get-findings --detector-id "$det" --finding-ids <id>
 ```
 
 - **Recon or probe findings against the ALB or a public IP** (`Recon:EC2/PortProbeUnprotectedPort` and similar) are internet background. Check that the security groups still match `modules/security-groups`, then archive.
-- **Anything naming an IAM principal** (`UnauthorizedAccess:IAMUser/…`, `CredentialAccess:…`, `Policy:IAMUser/RootCredentialUsage`, `Discovery:IAMUser/AnomalousBehavior`) is an incident until proven otherwise. Match the time and principal to a Terraform apply or a CI run. If none matches, disable the access key or revoke the role's sessions first, then investigate in CloudTrail (see the queries above).
+- **Anything naming an IAM principal** (`UnauthorizedAccess:IAMUser/…`, `CredentialAccess:…`, `Policy:IAMUser/RootCredentialUsage`, `Discovery:IAMUser/AnomalousBehavior`) is an incident until proven otherwise. Match the time and principal to a Terraform apply or a CI run. If none matches, disable the access key or revoke the role's sessions first, then investigate in CloudTrail (the query under Security alarms above).
 - **S3, RDS or Lambda findings** name the bucket, instance or function. Compare the actor with the roles that legitimately touch it (state bucket: the Terraform roles; RDS: since #242 no service role can read its credentials secret).
 
 Archive a finding only with the reason recorded, for example in the issue

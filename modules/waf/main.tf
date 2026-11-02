@@ -123,3 +123,93 @@ moved {
   from = aws_wafv2_web_acl.main
   to   = aws_wafv2_web_acl.this
 }
+
+# --- Request logging (#245, decision 2 on lentago/.github#318) ---
+#
+# Every request the web ACL evaluates, allowed or blocked, is logged to
+# CloudWatch Logs. WAF requires the log group's name to start with
+# "aws-waf-logs-". A record holds the client IP and country, the URI and query
+# string, the request headers, and the rule that terminated or counted the
+# request. The authorization and cookie headers are redacted, so no credential
+# or session token is written. The group stays on the default key, per ADR-0009
+# decision 1: this is request metadata for operators, like the flow logs.
+#
+# Cost (estimate, 2026-11-02): the ACL saw about 490,000 requests in the 30
+# days to 2026-11-02 (~10% blocked). The record size is an assumption, 1.5-2.5
+# KB, to be checked against the group's IncomingBytes once it runs. On that
+# assumption this is roughly 0.7-1.2 GB a month, billed as vended logs at
+# $0.50/GB. Vended logs count against CloudWatch's 5 GB monthly free tier:
+# October 2026's 2.1 GB of vended logs (mostly flow logs) and 0.7 GB of
+# standard ingestion billed $0. With about 0.5 GB a month more for the
+# CloudTrail copy since #244, this still fits under 5 GB, so it costs about $0
+# now and at most about $0.60 a month once the tier is used up. Storage at 30
+# days' retention is cents. The volume scales with traffic, so a request flood
+# raises it, alongside WAF's own per-request charge.
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+resource "aws_cloudwatch_log_group" "waf" {
+  name              = "aws-waf-logs-${var.project}-${var.environment}"
+  retention_in_days = var.log_retention_days
+
+  tags = {
+    Name = "aws-waf-logs-${var.project}-${var.environment}"
+  }
+}
+
+# Delivery to CloudWatch Logs needs a Logs resource policy for the
+# delivery.logs.amazonaws.com principal. When the caller can write one, WAF
+# creates it implicitly, named AWSWAF-LOGS and outside Terraform. Declaring it
+# here, scoped to this one group, and making the logging configuration wait for
+# it keeps that policy in code.
+data "aws_iam_policy_document" "waf_log_delivery" {
+  statement {
+    sid    = "WafLogDelivery"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["delivery.logs.amazonaws.com"]
+    }
+
+    actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+    resources = ["${aws_cloudwatch_log_group.waf.arn}:*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:*"]
+    }
+  }
+}
+
+resource "aws_cloudwatch_log_resource_policy" "waf_log_delivery" {
+  policy_name     = "${var.project}-${var.environment}-waf-log-delivery"
+  policy_document = data.aws_iam_policy_document.waf_log_delivery.json
+}
+
+resource "aws_wafv2_web_acl_logging_configuration" "this" {
+  resource_arn            = aws_wafv2_web_acl.this.arn
+  log_destination_configs = [aws_cloudwatch_log_group.waf.arn]
+
+  redacted_fields {
+    single_header {
+      name = "authorization"
+    }
+  }
+
+  redacted_fields {
+    single_header {
+      name = "cookie"
+    }
+  }
+
+  depends_on = [aws_cloudwatch_log_resource_policy.waf_log_delivery]
+}
