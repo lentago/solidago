@@ -29,3 +29,13 @@ output "api_key_ssm_path" {
   description = "SSM SecureString parameter the handler reads the Anthropic key from. Written out of band, never by Terraform (see the module header)."
   value       = local.api_key_ssm_path
 }
+
+output "turnstile_secret_ssm_path" {
+  description = "SSM SecureString the handler reads the Cloudflare Turnstile secret from when turnstile_enabled. Written out of band, never by Terraform, on the platform CMK like the API key."
+  value       = local.turnstile_ssm_path
+}
+
+output "cap_table_name" {
+  description = "DynamoDB table holding the per-UTC-day answer counter."
+  value       = aws_dynamodb_table.this.name
+}

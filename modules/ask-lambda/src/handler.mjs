@@ -1,7 +1,8 @@
 /**
  * "Ask the Wiki" answer endpoint — AWS Lambda (Node 22, no dependencies).
  *
- * POST { question: string, history?: [{role,content}], contexts: [{page,title,text}] }
+ * POST { question: string, history?: [{role,content}], contexts: [{page,title,text}],
+ *        turnstile_token?: string }
  *   -> { answer: string }
  *
  * A multi-turn, reasoning chat for a static site's "Ask the Wiki" feature. The
@@ -26,8 +27,22 @@
  *                       never in the environment or in Terraform state (#230)
  *   ALLOWED_ORIGIN      comma-separated origin allow-list; the CORS header
  *                       echoes the matching request Origin
- *   DAILY_REQUEST_CAP   default 300 (per warm container; belt over the API
- *                       spend cap set in the Anthropic console)
+ *   CAP_TABLE           required — DynamoDB table holding one counter per UTC
+ *                       day (#241)
+ *   DAILY_REQUEST_CAP   default 300 model calls per UTC day across every
+ *                       container (a belt under the spend cap set in the
+ *                       Anthropic console, which stays the outer bound)
+ *   UPSTREAM_TIMEOUT_MS default 25000; the model call is aborted after this,
+ *                       set below the Lambda timeout so a hang returns 504
+ *   TURNSTILE_ENABLED   "1" requires a Cloudflare Turnstile token in the body;
+ *                       anything else skips the check
+ *   TURNSTILE_SECRET_SSM_PATH  SSM SecureString holding the Turnstile secret,
+ *                       written out of band like the API key
+ *
+ * Order of the guards, cheapest first, so nothing that fails a check spends a
+ * cap slot or a model call (#241): CORS preflight, then shape (400), then the
+ * bot check (403), then the key (502), then the daily cap (429), then the
+ * model call (504 on timeout, 502 on an upstream error).
  *
  * 2026-07-17: composer moved claude-opus-4-8/high -> claude-sonnet-5/medium —
  * Opus-grade thinking ran tens of seconds, too slow for a chat page. The raised
@@ -39,38 +54,108 @@ const MODEL = 'claude-sonnet-5';
 const EFFORT = 'medium'; // output_config.effort — how deep the adaptive extended thinking runs
 const MAX_TOKENS = 8000; // total output cap (adaptive thinking + the visible answer both count)
 const MAX_HISTORY = 8; // prior conversation turns kept for context
-let served = 0;
-let day = new Date().toISOString().slice(0, 10);
+const MAX_CONTEXTS = 8; // reference passages kept per question
+const TWO_DAYS_S = 2 * 24 * 60 * 60; // cap-row TTL: DynamoDB deletes old days for free
+const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+const TURNSTILE_TIMEOUT_MS = 5000;
 
-// The Anthropic key, read from SSM on the first request a container serves and
-// cached for the container's life. A failed read, an empty value or the
-// out-of-band placeholder is not cached, so the next request reads again and a
-// freshly written key takes effect without a redeploy. A 401 from the API
-// drops the cache as well, so after a rotation each warm container picks up
-// the new key on its next request. The AWS SDK v3 ships in the nodejs22.x
-// runtime, so this needs no bundled dependency. Never log the value.
-let apiKey = null;
+// Out-of-band secrets (the Anthropic key, the Turnstile secret), read from SSM
+// on the first request a container serves that needs them and cached for the
+// container's life. A failed read, an empty value or the out-of-band
+// placeholder is not cached, so the next request reads again and a freshly
+// written value takes effect without a redeploy. The AWS SDK v3 ships in the
+// nodejs22.x runtime, so this needs no bundled dependency. Never log a value.
 let ssm = null;
-async function getApiKey() {
-  if (apiKey) return apiKey;
-  const name = process.env.ANTHROPIC_API_KEY_SSM_PATH;
-  if (!name) throw new Error('ANTHROPIC_API_KEY_SSM_PATH is not set');
+async function readSecureString(envVar) {
+  const name = process.env[envVar];
+  if (!name) throw new Error(`${envVar} is not set`);
   const { SSMClient, GetParameterCommand } = await import('@aws-sdk/client-ssm');
   ssm ??= new SSMClient({});
   const out = await ssm.send(new GetParameterCommand({ Name: name, WithDecryption: true }));
   const value = String(out.Parameter?.Value || '').trim();
-  if (!value || /^PLACEHOLDER/.test(value)) throw new Error(`no key in ${name} yet (empty or placeholder)`);
-  apiKey = value;
+  if (!value || /^PLACEHOLDER/.test(value)) throw new Error(`no value in ${name} yet (empty or placeholder)`);
+  return value;
+}
+
+// A 401 from the API drops the cached key, so after a rotation each warm
+// container picks up the new key on its next request.
+let apiKey = null;
+async function getApiKey() {
+  apiKey ??= await readSecureString('ANTHROPIC_API_KEY_SSM_PATH');
   return apiKey;
 }
+
+// Cloudflare Turnstile, the bot check in front of the cap (uvularia's
+// templates/ask-function pattern). Off unless TURNSTILE_ENABLED is "1", so the
+// box works before the site embeds the widget. When on, a missing token, a
+// rejected token, or a siteverify call that errors or times out all fail
+// closed: a bot check that cannot run must not wave traffic through. A secret
+// that cannot be read throws instead, so the handler answers 502 (our fault)
+// rather than 403 (the caller's).
+let turnstileSecret = null;
+async function passesTurnstile(token, remoteIp) {
+  if (process.env.TURNSTILE_ENABLED !== '1') return true;
+  turnstileSecret ??= await readSecureString('TURNSTILE_SECRET_SSM_PATH');
+  if (!token) return false;
+  try {
+    const form = new URLSearchParams({ secret: turnstileSecret, response: token });
+    if (remoteIp) form.set('remoteip', remoteIp);
+    const r = await fetch(SITEVERIFY_URL, {
+      method: 'POST',
+      body: form,
+      signal: AbortSignal.timeout(TURNSTILE_TIMEOUT_MS),
+    });
+    const out = await r.json();
+    return out?.success === true;
+  } catch {
+    return false;
+  }
+}
+
+// The daily cap: one atomic conditional increment per accepted request on a
+// DynamoDB row keyed by UTC date, so the ceiling holds across every warm
+// container instead of multiplying by them (uvularia's cap.py, ported). The
+// condition failing IS the cap being hit. Any other error is rethrown and the
+// handler fails closed (503): an unreadable cap must not mean an uncapped box.
+let ddb = null;
+async function reserveCapSlot(day, cap) {
+  const table = process.env.CAP_TABLE;
+  if (!table) throw new Error('CAP_TABLE is not set');
+  const { DynamoDBClient, UpdateItemCommand } = await import('@aws-sdk/client-dynamodb');
+  ddb ??= new DynamoDBClient({});
+  try {
+    await ddb.send(new UpdateItemCommand({
+      TableName: table,
+      Key: { day: { S: day } },
+      UpdateExpression: 'SET #c = if_not_exists(#c, :zero) + :one, #e = if_not_exists(#e, :ttl)',
+      ConditionExpression: 'attribute_not_exists(#c) OR #c < :cap',
+      ExpressionAttributeNames: { '#c': 'count', '#e': 'expires' },
+      ExpressionAttributeValues: {
+        ':zero': { N: '0' },
+        ':one': { N: '1' },
+        ':cap': { N: String(cap) },
+        ':ttl': { N: String(Math.floor(Date.now() / 1000) + TWO_DAYS_S) },
+      },
+    }));
+    return true;
+  } catch (err) {
+    if (err?.name === 'ConditionalCheckFailedException') return false;
+    throw err;
+  }
+}
+
+// The request body and each context entry must be a plain object; anything
+// else (null, a string, an array) is a malformed request and gets a 400, not a
+// 500 from reading a property of null.
+const isPlainObject = (c) => c !== null && typeof c === 'object' && !Array.isArray(c);
 
 // One structured line per invocation, success or failure — see CLAUDE.md "Ask
 // logging (Axiom)" for the privacy/retention rationale behind each field. A
 // fixed key set (even when a field doesn't apply to a given outcome) keeps the
 // Axiom schema uniform across outcomes. `outcome` is one of: success |
-// upstream_error | rate_limited | rejected. `timeout` is reserved but not
-// currently reachable — the platform Lambda timeout kills the process before
-// any line can be written, so there's no code path to emit it from today.
+// upstream_error | rate_limited | rejected | timeout. `timeout` is the model
+// call aborted at UPSTREAM_TIMEOUT_MS, which is set below the platform Lambda
+// timeout so the line is written before the platform would kill the process.
 const logAsk = (fields) => {
   console.log(JSON.stringify({
     event: 'ask_query',
@@ -251,20 +336,30 @@ export async function handler(event) {
 
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { body = {}; }
+  if (!isPlainObject(body)) body = {}; // a JSON null, string or array body is just as empty
   const question = String(body.question || '').slice(0, 500).trim();
-  const contexts = Array.isArray(body.contexts) ? body.contexts.slice(0, 8) : [];
+  const contexts = Array.isArray(body.contexts) ? body.contexts.slice(0, MAX_CONTEXTS) : [];
   const site = /essexcrossingatmontserrat\.com$/.test(origin) ? 'essexcrossing' : 'pondview';
-
-  const today = new Date().toISOString().slice(0, 10);
-  if (today !== day) { day = today; served = 0; }
-  if (++served > Number(process.env.DAILY_REQUEST_CAP || 300)) {
-    logAsk({ site, question, outcome: 'rate_limited' });
-    return { statusCode: 429, headers: cors, body: JSON.stringify({ error: 'Daily question budget reached — try tomorrow.' }) };
-  }
 
   if (!question || !contexts.length) {
     logAsk({ site, question, outcome: 'rejected' });
     return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'question and contexts required' }) };
+  }
+  if (!contexts.every(isPlainObject)) {
+    logAsk({ site, question, outcome: 'rejected', error: 'contexts entries must be objects' });
+    return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'contexts entries must be objects' }) };
+  }
+
+  let human;
+  try {
+    human = await passesTurnstile(String(body.turnstile_token || ''), event.requestContext?.http?.sourceIp || '');
+  } catch (err) {
+    logAsk({ site, question, outcome: 'upstream_error', error: `bot check unavailable: ${String(err?.message || err)}`.slice(0, 300) });
+    return { statusCode: 502, headers: cors, body: JSON.stringify({ error: 'bot check unavailable' }) };
+  }
+  if (!human) {
+    logAsk({ site, question, outcome: 'rejected', error: 'turnstile verification failed' });
+    return { statusCode: 403, headers: cors, body: JSON.stringify({ error: 'Bot check failed. Reload the page and try again.' }) };
   }
 
   // Prior conversation turns (plain text), normalized to strict user/assistant
@@ -297,10 +392,31 @@ export async function handler(event) {
     return { statusCode: 502, headers: cors, body: JSON.stringify({ error: 'model call unavailable' }) };
   }
 
-  const fetchStart = Date.now();
-  let r;
+  // Claimed only now, after every check above has passed, so a rejected or
+  // bot-failed request never spends a slot (#241). Not refunded if the model
+  // call below fails or times out: that call was made and may still be
+  // billed, and the cap bounds calls, not successes.
+  let slot;
   try {
-    r = await fetch('https://api.anthropic.com/v1/messages', {
+    slot = await reserveCapSlot(new Date().toISOString().slice(0, 10), Number(process.env.DAILY_REQUEST_CAP || 300));
+  } catch (err) {
+    logAsk({ site, question, outcome: 'upstream_error', error: `cap store unavailable: ${String(err?.message || err)}`.slice(0, 300) });
+    return { statusCode: 503, headers: cors, body: JSON.stringify({ error: 'Ask is unavailable right now. Try again later.' }) };
+  }
+  if (!slot) {
+    logAsk({ site, question, outcome: 'rate_limited' });
+    return { statusCode: 429, headers: cors, body: JSON.stringify({ error: 'Daily question budget reached — try tomorrow.' }) };
+  }
+
+  // The model call, bounded by UPSTREAM_TIMEOUT_MS. The timer stays armed
+  // through the body read, so a stalled response stream aborts too.
+  const fetchStart = Date.now();
+  const upstream = new AbortController();
+  const timer = setTimeout(() => upstream.abort(), Number(process.env.UPSTREAM_TIMEOUT_MS || 25000));
+  let status;
+  let data;
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': key,
@@ -315,22 +431,30 @@ export async function handler(event) {
         system: systemFor(origin),
         messages,
       }),
+      signal: upstream.signal,
     });
+    status = r.status;
+    if (!r.ok) {
+      if (r.status === 401) apiKey = null; // rotated or revoked: re-read SSM next request
+      const errText = await r.text().catch(() => '');
+      logAsk({ site, question, outcome: 'upstream_error', latency_ms: Date.now() - fetchStart, model: MODEL, upstream_status: status, error: errText.slice(0, 300) });
+      return { statusCode: 502, headers: cors, body: JSON.stringify({ error: `model call failed (${status})` }) };
+    }
+    data = await r.json();
   } catch (err) {
+    if (upstream.signal.aborted) {
+      logAsk({ site, question, outcome: 'timeout', latency_ms: Date.now() - fetchStart, model: MODEL, upstream_status: status ?? null });
+      return { statusCode: 504, headers: cors, body: JSON.stringify({ error: 'The answer took too long. Try again.' }) };
+    }
     // Network-level failure (no response at all) — log and rethrow unchanged,
     // preserving today's behavior (an unhandled rejection, caught by the Lambda
-    // runtime) rather than inventing a new response shape for it.
-    logAsk({ site, question, outcome: 'upstream_error', latency_ms: Date.now() - fetchStart, model: MODEL, error: String(err?.message || err).slice(0, 300) });
+    // runtime and counted in the function's Errors alarm).
+    logAsk({ site, question, outcome: 'upstream_error', latency_ms: Date.now() - fetchStart, model: MODEL, upstream_status: status ?? null, error: String(err?.message || err).slice(0, 300) });
     throw err;
+  } finally {
+    clearTimeout(timer);
   }
   const latencyMs = Date.now() - fetchStart;
-  if (!r.ok) {
-    if (r.status === 401) apiKey = null; // rotated or revoked: re-read SSM next request
-    const errText = await r.text().catch(() => '');
-    logAsk({ site, question, outcome: 'upstream_error', latency_ms: latencyMs, model: MODEL, upstream_status: r.status, error: errText.slice(0, 300) });
-    return { statusCode: 502, headers: cors, body: JSON.stringify({ error: `model call failed (${r.status})` }) };
-  }
-  const data = await r.json();
   const answer = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   logAsk({
     site,
