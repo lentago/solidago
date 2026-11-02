@@ -51,8 +51,9 @@ resource "aws_sns_topic" "alerts" {
 # principal that publishes here must be named. Budgets alone was named from
 # 2026-04-07 until #250, and in that time no alarm on this topic could notify
 # anyone (every publish failed "CloudWatch Alarms is not authorized to perform
-# SNS:Publish"). AWS Config publishes through its own role's IAM grant and
-# needs no statement here.
+# SNS:Publish"). EventBridge was added with #243, for GuardDuty findings.
+# AWS Config publishes through its own role's IAM grant and needs no statement
+# here.
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
@@ -95,6 +96,33 @@ data "aws_iam_policy_document" "sns_topic_policy" {
       test     = "ArnLike"
       variable = "aws:SourceArn"
       values   = ["arn:aws:cloudwatch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:alarm:*"]
+    }
+  }
+
+  # Any EventBridge rule in this account and region, on the same reasoning as
+  # the alarms above. The first is modules/guardduty's findings rule (#243).
+  statement {
+    sid    = "AllowEventBridgePublish"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+
+    actions   = ["SNS:Publish"]
+    resources = [aws_sns_topic.alerts.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:events:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:rule/*"]
     }
   }
 }

@@ -185,6 +185,11 @@ output "waf_web_acl_arn" {
   value       = module.waf.web_acl_arn
 }
 
+output "guardduty_detector_id" {
+  description = "GuardDuty detector ID"
+  value       = module.guardduty.detector_id
+}
+
 output "dashboard_name" {
   description = "CloudWatch dashboard name"
   value       = module.dashboard.dashboard_name

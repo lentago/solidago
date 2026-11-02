@@ -267,6 +267,29 @@ aws logs get-query-results --query-id "$qid"
 | `cloudtrail-config-change` | Expected only when a merge changes `modules/cloudtrail`. Otherwise run `aws cloudtrail get-trail-status --name solidago-dev-trail`: `StopLogging` is the classic cover-up step. |
 | `unauthorized-api-calls` | Fires at 5 or more in 5 minutes; the AWS Config recorder's own probing stays below that. Group the events by `userIdentity.arn`: a CI role hitting a new grant gap after a merge is a bug to fix in code, anything unfamiliar is an incident. |
 
+## GuardDuty findings
+
+GuardDuty (#243) emails the alert topic for every finding of severity 4
+(medium) or above, through the EventBridge rule
+`solidago-dev-guardduty-findings`. The email names the finding type, its title
+and a console link. Low findings are in the console only. Teardown leaves the
+detector in place.
+
+```bash
+det=$(aws guardduty list-detectors --query 'DetectorIds[0]' --output text)
+aws guardduty list-findings --detector-id "$det" \
+  --finding-criteria '{"Criterion":{"service.archived":{"Eq":["false"]},"severity":{"Gte":4}}}'
+aws guardduty get-findings --detector-id "$det" --finding-ids <id>
+```
+
+- **Recon or probe findings against the ALB or a public IP** (`Recon:EC2/PortProbeUnprotectedPort` and similar) are internet background. Check that the security groups still match `modules/security-groups`, then archive.
+- **Anything naming an IAM principal** (`UnauthorizedAccess:IAMUser/…`, `CredentialAccess:…`, `Policy:IAMUser/RootCredentialUsage`, `Discovery:IAMUser/AnomalousBehavior`) is an incident until proven otherwise. Match the time and principal to a Terraform apply or a CI run. If none matches, disable the access key or revoke the role's sessions first, then investigate in CloudTrail (see the queries above).
+- **S3, RDS or Lambda findings** name the bucket, instance or function. Compare the actor with the roles that legitimately touch it (state bucket: the Terraform roles; RDS: since #242 no service role can read its credentials secret).
+
+Archive a finding only with the reason recorded, for example in the issue
+tracking it. A suppression filter is a code change, and the apply role
+deliberately cannot create one (#256).
+
 ---
 
 ## Cost reference

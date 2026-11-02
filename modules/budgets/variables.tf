@@ -23,3 +23,12 @@ variable "sns_topic_arn" {
   description = "ARN of the SNS topic for budget notifications"
   type        = string
 }
+
+variable "service_budgets" {
+  description = "Per-service monthly budgets, keyed by a short name used in the budget's name. `services` takes Cost Explorer service names (for example \"Amazon GuardDuty\"); `limit` is USD."
+  type = map(object({
+    limit    = string
+    services = list(string)
+  }))
+  default = {}
+}

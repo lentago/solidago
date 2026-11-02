@@ -60,7 +60,7 @@ A three-tier web application running on AWS, fully managed by Terraform:
 
 **Data:** RDS PostgreSQL and ElastiCache (Valkey) in private subnets. Secrets Manager for credential management.
 
-**Security:** WAFv2 Web ACL on the ALB with AWS Managed Rules (Common Rule Set, Known Bad Inputs, IP Reputation List) and a custom rate-limiting rule. KMS customer-managed key for encryption at rest. Security groups with least-privilege chaining — each tier can only reach the tier it needs.
+**Security:** WAFv2 Web ACL on the ALB with AWS Managed Rules (Common Rule Set, Known Bad Inputs, IP Reputation List) and a custom rate-limiting rule. GuardDuty threat detection, with findings of medium severity and above emailed to the alert topic (see the [runbook](docs/RUNBOOK.md#guardduty-findings)). KMS customer-managed key for encryption at rest. Security groups with least-privilege chaining — each tier can only reach the tier it needs.
 
 **Observability:** CloudWatch dashboard covering ECS, ALB, WAF, RDS, ElastiCache, and NAT Gateway metrics. CloudWatch alarms with SNS email notifications. CloudTrail for API audit logging, with CIS 3.x metric-filter alarms on root use, sign-in without MFA, IAM and trail changes, and unauthorized calls (see the [runbook](docs/RUNBOOK.md#security-alarms-cloudtrail)). AWS Config for compliance rules.
 
@@ -128,7 +128,7 @@ solidago/
 │   ├── apex-domain/             # Extra registered apex domain in front of a site (3 instances)
 │   ├── ask-lambda/              # "Ask the Wiki" answer endpoint (Lambda + public function URL)
 │   ├── aws-config/              # AWS Config recorder + compliance rules
-│   ├── budgets/                 # AWS Budgets with SNS alerts
+│   ├── budgets/                 # AWS Budgets with SNS alerts (account-wide + per-service)
 │   ├── cloudtrail/              # CloudTrail audit logging
 │   ├── dashboard/               # CloudWatch operational dashboard
 │   ├── dns/                     # Route 53 + ACM certificate
@@ -137,6 +137,7 @@ solidago/
 │   ├── ecs-autoscaling/         # Application Auto Scaling policies
 │   ├── elasticache/             # ElastiCache (Valkey) replication group
 │   ├── grafana-cloud/           # Cross-account read-only role for Grafana Cloud CloudWatch
+│   ├── guardduty/               # GuardDuty detector + findings to the alert topic
 │   ├── iam/                     # IAM roles, policies, OIDC provider
 │   ├── kms/                     # KMS customer-managed key
 │   ├── monitoring/              # CloudWatch alarms + SNS topic
@@ -225,7 +226,7 @@ For the detailed, step-by-step deployment reference, see [docs/BOOTSTRAP.md](doc
 
 ## Cost
 
-With all resources running 24/7, the environment costs approximately $130-140/month. The largest line items are NAT Gateways (~$65), ALB (~$16), RDS (~$15), and ElastiCache (~$12). Budget alerts notify via email at 50%, 80%, and 100% of a $100/month threshold.
+With all resources running 24/7, the environment costs approximately $130-140/month. The largest line items are NAT Gateways (~$65), ALB (~$16), RDS (~$15), and ElastiCache (~$12). Budget alerts notify via email at 50%, 80%, and 100% of a $100/month threshold. GuardDuty (#243) adds about $6/month after its 30-day free trial (breakdown in the [`modules/guardduty`](modules/guardduty/main.tf) header) and has its own $10/month budget, which alerts on actual or forecast spend above it.
 
 ## Related Repositories
 
