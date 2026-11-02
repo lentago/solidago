@@ -11,12 +11,20 @@
 #   3. Manual workflow_dispatch on main → apply (re-reads secrets and redeploys
 #      without waiting for an unrelated push; useful after credential rotation)
 #
-# Authenticates via OIDC with two roles (#225): the plan job assumes the
-# read-only solidago-dev-github-actions-terraform-plan role (trust: this repo's
-# `pull_request` sub); the apply job assumes the write role
-# solidago-dev-github-actions-terraform (trust: `ref:refs/heads/main`). Neither
-# job declares `environment:` — that key would replace the sub with
-# `environment:<name>` and match neither trust policy.
+# Authenticates via OIDC with one role per GitHub environment (#225, #156):
+#   - plan  → `environment: terraform-plan` → read-only role
+#             solidago-dev-github-actions-terraform-plan. No branch policy:
+#             pull-request refs must reach it.
+#   - apply → `environment: terraform` → write role
+#             solidago-dev-github-actions-terraform. The environment's
+#             deployment branch policy allows `main` only (admins cannot
+#             bypass), so GitHub refuses the job on any other ref before it
+#             starts, whatever this file's `if:` says.
+# Each role trusts only its environment's OIDC sub, so the `environment:` key
+# is load-bearing for AWS access, not for secrets (both environments hold
+# none; the TF_VAR_* inputs are repo-level). Dropping it, or swapping the two,
+# fails at Configure AWS credentials (#155, #156). Settings are codified in
+# lentago/.github (lentago/.github#311).
 # Plan output is posted as a PR comment for review.
 
 name: Terraform
@@ -77,6 +85,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.tf == 'true' && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    # Read-only plan environment; its OIDC sub is the plan role's only trust.
+    environment: terraform-plan
     # Hidden Pitzi Labs preview host is supplied from the repo Actions
     # variable (not committed to source). Required by var.pitzilabs_preview_host.
     env:
@@ -85,9 +95,6 @@ jobs:
       TF_VAR_pondview_preview_host: ${{ vars.PONDVIEW_PREVIEW_HOST }}
       TF_VAR_grafana_cloud_account_id: ${{ vars.GRAFANA_CLOUD_ACCOUNT_ID }}
       TF_VAR_grafana_cloud_external_id: ${{ secrets.GRAFANA_CLOUD_EXTERNAL_ID }}
-      # Anthropic key for the Essex Crossing HOA wiki's "Ask the Wiki" answer
-      # Lambda (module.ask_pondview). Repo Actions secret, never committed.
-      TF_VAR_anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
       # Axiom log shipping (optional since #188; both blank = disabled). Dataset
       # names aren't secret, so the reference stack's values live here.
       TF_VAR_axiom_ecs_dataset: cjp-solidago-ecs
@@ -178,6 +185,8 @@ jobs:
     name: Terraform Apply
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Write environment: main-only deployment branch policy (#156).
+    environment: terraform
     concurrency:
       group: terraform-apply
       cancel-in-progress: false
@@ -189,9 +198,6 @@ jobs:
       TF_VAR_pondview_preview_host: ${{ vars.PONDVIEW_PREVIEW_HOST }}
       TF_VAR_grafana_cloud_account_id: ${{ vars.GRAFANA_CLOUD_ACCOUNT_ID }}
       TF_VAR_grafana_cloud_external_id: ${{ secrets.GRAFANA_CLOUD_EXTERNAL_ID }}
-      # Anthropic key for the Essex Crossing HOA wiki's "Ask the Wiki" answer
-      # Lambda (module.ask_pondview). Repo Actions secret, never committed.
-      TF_VAR_anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
       # Axiom log shipping (optional since #188; both blank = disabled). Dataset
       # names aren't secret, so the reference stack's values live here.
       TF_VAR_axiom_ecs_dataset: cjp-solidago-ecs
@@ -207,7 +213,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
         with:
-          role-to-assume: arn:aws:iam::365184644049:role/solidago-dev-github-actions-terraform # Apply (write) role; trust = ref:refs/heads/main
+          role-to-assume: arn:aws:iam::365184644049:role/solidago-dev-github-actions-terraform # Apply (write) role (#225)
           aws-region: us-east-1
 
       # Names the assumed role in the job log (#225 acceptance: plan vs apply
@@ -223,6 +229,22 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve -no-color -input=false -lock-timeout=120s
+
+      # Out-of-band secrets (#213 pattern, #230). Terraform never holds these
+      # values, so a green apply cannot tell a real one from the placeholder the
+      # slot was created with. Fail the run while a slot is missing, on the
+      # aws/ssm key, empty or still placeholder-shaped. Only the shape is tested:
+      # the value is masked and never printed. Runs after the apply, so the
+      # infrastructure still lands; the red run is the signal to write the value.
+      - name: Check out-of-band secrets
+        working-directory: .
+        env:
+          # SSM SecureString slots to check; keep in step with the
+          # pondview_ask_api_key_ssm_path output (modules/ask-lambda).
+          SSM_SLOTS: /solidago-dev-pondview-ask/anthropic-api-key
+        run: |
+          read -ra slots <<< "$SSM_SLOTS"
+          ./scripts/ci/check-out-of-band-secrets.sh "${slots[@]}"
 
   # Single required status check for the terraform pipeline. Runs on every PR
   # (if: always()) so the ruleset can require exactly `gate`: it reports green

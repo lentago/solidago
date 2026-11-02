@@ -27,8 +27,8 @@ Patterns you can lift into your own org — each one points at the code that pro
 | Pattern | How it shows up here |
 |---------|----------------------|
 | **Plan-on-PR / apply-on-merge Terraform** — change management where the merged PR *is* the change record | [`.github/workflows/terraform.yml`](.github/workflows/terraform.yml): the `plan` job posts the full `terraform plan` diff as a PR comment; the `apply` job runs only on push to `main` / `workflow_dispatch`. Nobody runs `terraform apply` from a laptop. |
-| **OIDC-only cloud auth** — no static AWS keys anywhere | `role-to-assume` in [`terraform.yml`](.github/workflows/terraform.yml) is a read-only plan role scoped to `repo:lentago/solidago:pull_request` and a write apply role scoped to `repo:lentago/solidago:ref:refs/heads/main`; there are no AWS access keys in GitHub Secrets. |
-| **Dual IAM-role trust split** — blast-radius containment between infra and workloads | [`modules/iam`](modules/iam) + [`docs/WORKLOAD_RELATIONSHIP.md`](docs/WORKLOAD_RELATIONSHIP.md): `solidago-dev-github-actions` (workloads push to ECR/ECS) vs `solidago-dev-github-actions-terraform` (this repo mutates infra, from `main` only; PR plans use the read-only `…-terraform-plan` role). Neither can do the other's job. |
+| **OIDC-only cloud auth** — no static AWS keys anywhere | the `role-to-assume` lines in [`terraform.yml`](.github/workflows/terraform.yml) are scoped to `repo:lentago/solidago:environment:terraform` (apply, `main` only) and `…:environment:terraform-plan` (read-only plan); there are no AWS access keys in GitHub Secrets. |
+| **Dual IAM-role trust split** — blast-radius containment between infra and workloads | [`modules/iam`](modules/iam) + [`docs/WORKLOAD_RELATIONSHIP.md`](docs/WORKLOAD_RELATIONSHIP.md): `solidago-dev-github-actions` (workloads push to ECR/ECS) vs `solidago-dev-github-actions-terraform` (this repo mutates infra). Neither can do the other's job. |
 | **Required check that survives path-filtered CI** — no docs-only PR gets stuck forever | The `gate` job in [`terraform.yml`](.github/workflows/terraform.yml) (`needs: [changes, plan]`, `if: always()`) reports green even when the plan is skipped, so the ruleset can require exactly `gate`. |
 | **Shared reusable workflows** — cross-repo CI logic centralized, not copy-pasted | [`.github/workflows/docs-check.yml`](.github/workflows/docs-check.yml) is a thin wrapper over `uses: lentago/shared-workflows/.github/workflows/docs-check.yml@main`. |
 | **Security-by-default posture** — even at single-account scale | [`modules/waf`](modules/waf) (AWS managed rule groups + rate limiting), [`modules/security-groups`](modules/security-groups) (tiered least-privilege chaining), [`modules/kms`](modules/kms) (encryption at rest). |
@@ -172,18 +172,26 @@ The app deploy role can push containers and update ECS services. The Terraform r
 
 ### OIDC Authentication, No Stored Secrets
 
-Both pipelines authenticate via GitHub's OIDC provider. No AWS access keys in GitHub Secrets. The Terraform apply role's trust policy is scoped to `ref:refs/heads/main`, so only reviewed, merged code can assume it; PR runs get only the read-only plan role (see below).
+Both pipelines authenticate via GitHub's OIDC provider. No AWS access keys in GitHub Secrets. The Terraform roles trust GitHub environments rather than events or refs: a job gets a Terraform role only by declaring that role's environment.
 
 ### Terraform CI Roles: Plan vs Apply
 
-The Terraform pipeline uses two roles (#225): `solidago-dev-github-actions-terraform-plan` — AWS `ReadOnlyAccess` plus state read, the S3-native lockfile, and this stack's secret values — trusted only for this repo's `pull_request` sub; and `solidago-dev-github-actions-terraform`, the write role, trusted only for `ref:refs/heads/main` (push and `workflow_dispatch` on main). A PR run can never hold write credentials, and an apply attempted under the plan role is denied on its first mutating call. Each job logs `aws sts get-caller-identity` so the run shows which role it got.
+The Terraform pipeline uses two roles, one per GitHub environment (#225, #156):
 
-**Bootstrap ordering.** Both roles are themselves Terraform-managed, and the plan role does not exist until an apply creates it — and that apply runs under the existing role. So the split lands in two merges:
+| Role | Trusted sub | Permissions | Who can mint the sub |
+|---|---|---|---|
+| `solidago-dev-github-actions-terraform-plan` | `repo:lentago/solidago:environment:terraform-plan` | AWS `ReadOnlyAccess`, plus state read, the S3-native lockfile, and this stack's secret values | the plan job on pull requests; the environment has no branch policy, because PR refs must reach it |
+| `solidago-dev-github-actions-terraform` | `repo:lentago/solidago:environment:terraform` | write (the apply) | the apply job on `main` only: the `terraform` environment carries a deployment branch policy (`main`, admins cannot bypass) |
 
-1. **Create, don't switch.** Terraform adds the plan role and *widens* the apply role's trust to `ref:refs/heads/main` alongside the legacy `environment:terraform` sub. `terraform.yml` still runs both jobs in the `terraform` environment on the existing role, so this PR's own plan and its merge apply succeed unchanged.
-2. **Switch, then narrow.** `terraform.yml` drops `environment: terraform` from both jobs — the plan job assumes the plan role (sub `…:pull_request`), the apply job the apply role (sub `…:ref:refs/heads/main`) — and Terraform removes the `environment:terraform` sub from the apply role. This PR's plan runs under the plan role created by step 1; its merge apply assumes via the `ref:refs/heads/main` sub step 1 already trusts, then narrows the trust. No trust narrows before every caller has moved off it.
+The environment-form sub carries no ref, so IAM alone cannot tell `main` from a branch. The `terraform` environment's branch policy is the guard: it is repo configuration that no PR can weaken, which an `if:` in the workflow file is not (#156). The bare subs are deliberately not trusted: every pull-request job with `id-token: write` mints `…:pull_request` and every main-context job mints `…:ref:refs/heads/main`, including the comment-triggered Claude responder in `claude.yml`. An apply attempted under the plan role is denied on its first mutating call, and each Terraform job logs `aws sts get-caller-identity` so the run shows which role it got. The environments and the branch policy are codified in `lentago/.github` (lentago/.github#311).
 
-Once both steps have landed, a fresh adopter skips the dance: the hand-bootstrapped apply role (BOOTSTRAP Step 7) is created with the final `ref:refs/heads/main` trust, and the first local apply creates the plan role before any PR runs.
+**Bootstrap ordering.** Both roles are themselves Terraform-managed, and the plan role does not exist until an apply creates it, under the existing role. So the split lands in two merges, then one setting:
+
+1. **Create, don't switch.** Terraform adds the plan role. `terraform.yml` still runs both jobs in the `terraform` environment on the apply role, so this PR's own plan and its merge apply succeed unchanged.
+2. **Switch the plan.** The plan job moves to `environment: terraform-plan` and the plan role. This PR's own plan is the end-to-end proof: if the plan role or its trust were wrong, the plan fails and the PR cannot merge.
+3. **Set the branch policy** on `terraform` (custom policy `main`, `can_admins_bypass: false`) once no plan uses that environment.
+
+A fresh adopter skips the dance: the first local apply creates the plan role before any PR runs, and BOOTSTRAP creates both environments with the branch policy in place.
 
 ### Service-Level IAM Wildcards on the Terraform Role
 

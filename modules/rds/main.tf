@@ -9,7 +9,10 @@
 #   - RDS-managed master credentials (no passwords in Terraform state)
 #   - gp3 storage for better price/performance
 #   - Automated backups with configurable retention
-#   - Deletion protection enabled
+#   - Deletion protection OFF and no final snapshot on destroy
+#     (deletion_protection = false, skip_final_snapshot = true): a deliberate
+#     dev-tier trade-off, see
+#     docs/decisions/0008-dev-tier-rds-deletion-protection-off-no-final-snapshot.md
 # =============================================================================
 
 # --- DB Subnet Group ---

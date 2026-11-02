@@ -25,6 +25,12 @@ variable "kms_key_arn" {
   type        = string
 }
 
+variable "out_of_band_secret_parameter_arns" {
+  description = "ARNs of the hand-written SSM SecureString slots the Terraform apply job's post-apply check reads (#230, the #213 pattern). The apply role gets ssm:GetParameter on exactly these; an empty list grants none."
+  type        = list(string)
+  default     = []
+}
+
 variable "tfstate_kms_key_arn" {
   description = "ARN of the dedicated, bootstrap-managed CMK that encrypts the Terraform state bucket (alias/solidago-tfstate). Distinct from kms_key_arn. GitHub Actions roles that read/write remote state need scoped KMS access to it."
   type        = string

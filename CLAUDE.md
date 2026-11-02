@@ -125,7 +125,7 @@ PR workflow + auto-merge arming protocol is fleet-wide; see `~/repos/CLAUDE.md`.
 - `environments/dev/outputs.tf` — what each module exposes
 - `environments/dev/backend.tf` — remote state configuration (S3 backend, S3-native locking, SSE-KMS via the bootstrap-managed `alias/solidago-tfstate` CMK)
 - `modules/*/variables.tf` — what each module accepts
-- `modules/iam/main.tf` — OIDC roles. `solidago-dev-github-actions` (trusts the workload repo `site-icecreamtofightwith-com`, née `ice-cream-book`, via `var.app_github_repo` + `additional_app_github_repos` — old names dual-trusted during the 2026-07-04 site-repo rename transition) deploys containers and updates ECS; `solidago-dev-github-actions-terraform` (trusts this repo's `ref:refs/heads/main`) runs the Terraform apply, and the read-only `solidago-dev-github-actions-terraform-plan` (trusts this repo's `pull_request` sub) runs PR plans (#225). The split keeps platform mutations and workload deploys on separate credentials.
+- `modules/iam/main.tf` — OIDC roles. `solidago-dev-github-actions` (trusts the workload repo `site-icecreamtofightwith-com`, née `ice-cream-book`, via `var.app_github_repo` + `additional_app_github_repos` — old names dual-trusted during the 2026-07-04 site-repo rename transition) deploys containers and updates ECS; `solidago-dev-github-actions-terraform` (trusts this repo's `terraform` environment, which a deployment branch policy limits to `main`) runs the Terraform apply, and the read-only `solidago-dev-github-actions-terraform-plan` (trusts the `terraform-plan` environment) runs PR plans (#225, #156). The split keeps platform mutations and workload deploys on separate credentials.
 
 ## Project Phases
 

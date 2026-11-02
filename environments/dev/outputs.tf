@@ -46,12 +46,12 @@ output "github_actions_role_arn" {
 }
 
 output "github_actions_terraform_role_arn" {
-  description = "GitHub Actions Terraform pipeline APPLY role ARN (push to main / workflow_dispatch)"
+  description = "GitHub Actions Terraform pipeline APPLY role ARN (terraform environment, main only)"
   value       = module.iam.github_actions_terraform_role_arn
 }
 
 output "github_actions_terraform_plan_role_arn" {
-  description = "GitHub Actions Terraform pipeline PLAN role ARN (read-only, pull_request; #225)"
+  description = "GitHub Actions Terraform pipeline PLAN role ARN (read-only, terraform-plan environment; #225, #156)"
   value       = module.iam.github_actions_terraform_plan_role_arn
 }
 
@@ -224,6 +224,11 @@ output "pondview_ecs_service_name" {
 output "pondview_ask_endpoint_url" {
   description = "Public function URL for the pondviewlane.com 'Ask' answer Lambda. Set as the PUBLIC_ASK_ENDPOINT Actions variable in lentago/site-pondviewlane-com so the built site POSTs questions here."
   value       = module.ask_pondview.function_url
+}
+
+output "pondview_ask_api_key_ssm_path" {
+  description = "SSM SecureString the pondview Ask Lambda reads its Anthropic key from. Written out of band (aws ssm put-parameter), never by Terraform, so the key stays out of state. The Terraform workflow's post-apply check fails while it is missing or still holds its placeholder."
+  value       = module.ask_pondview.api_key_ssm_path
 }
 
 output "pondview_domain_name_servers" {
