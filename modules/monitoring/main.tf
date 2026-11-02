@@ -46,6 +46,16 @@ resource "aws_sns_topic" "alerts" {
   }
 }
 
+# A topic policy REPLACES SNS's default one, and the default is what lets a
+# same-account service such as CloudWatch alarms publish. So every service
+# principal that publishes here must be named. Budgets alone was named from
+# 2026-04-07 until #250, and in that time no alarm on this topic could notify
+# anyone (every publish failed "CloudWatch Alarms is not authorized to perform
+# SNS:Publish"). AWS Config publishes through its own role's IAM grant and
+# needs no statement here.
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 data "aws_iam_policy_document" "sns_topic_policy" {
   statement {
     sid    = "AllowBudgetsPublish"
@@ -58,6 +68,34 @@ data "aws_iam_policy_document" "sns_topic_policy" {
 
     actions   = ["SNS:Publish"]
     resources = [aws_sns_topic.alerts.arn]
+  }
+
+  # Any alarm in this account and region, not a named list, so a module that
+  # adds an alarm (ask-lambda, cloudtrail) needs no change here. The source
+  # conditions keep another account's alarms out (confused deputy).
+  statement {
+    sid    = "AllowCloudWatchAlarmsPublish"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudwatch.amazonaws.com"]
+    }
+
+    actions   = ["SNS:Publish"]
+    resources = [aws_sns_topic.alerts.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:cloudwatch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:alarm:*"]
+    }
   }
 }
 

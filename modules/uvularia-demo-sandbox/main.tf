@@ -425,6 +425,9 @@ resource "aws_sns_topic" "alerts" {
   tags = merge(local.tags, { Name = "${local.prefix}-alerts" })
 }
 
+# The topic policy replaces SNS's default, so each publishing service must be
+# named: the budget, and the ask_errors alarm below (#250; until then that
+# alarm's notifications were refused).
 data "aws_iam_policy_document" "alerts" {
   statement {
     sid    = "AllowBudgetsPublish"
@@ -437,6 +440,31 @@ data "aws_iam_policy_document" "alerts" {
 
     actions   = ["SNS:Publish"]
     resources = [aws_sns_topic.alerts.arn]
+  }
+
+  statement {
+    sid    = "AllowCloudWatchAlarmsPublish"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudwatch.amazonaws.com"]
+    }
+
+    actions   = ["SNS:Publish"]
+    resources = [aws_sns_topic.alerts.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [var.aws_account_id]
+    }
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:cloudwatch:${var.aws_region}:${var.aws_account_id}:alarm:${local.prefix}-*"]
+    }
   }
 }
 
