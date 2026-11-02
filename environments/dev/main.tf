@@ -669,6 +669,9 @@ module "cloudtrail" {
 
   s3_bucket_name = module.s3.bucket_id
   kms_key_arn    = module.kms.key_arn
+
+  # CIS 3.x metric-filter alarms (#244) go to the platform alert topic.
+  alarm_topic_arn = module.monitoring.sns_topic_arn
 }
 
 module "aws_config" {

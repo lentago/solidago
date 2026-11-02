@@ -243,6 +243,29 @@ aws secretsmanager delete-secret --secret-id <db-credentials arn> \
 
 ---
 
+## Security alarms (CloudTrail)
+
+Five alarms named `solidago-dev-cis-*` (#244, CIS AWS Foundations 3.x) watch the
+trail's CloudWatch Logs copy, `/aws/cloudtrail/solidago-dev-trail`, and email
+the alert topic on ALARM and on OK. Teardown leaves them in place. To see what
+fired one, query that log group over the alarm's 5-minute window, for example:
+
+```bash
+aws logs start-query --log-group-name /aws/cloudtrail/solidago-dev-trail \
+  --start-time <epoch> --end-time <epoch> \
+  --query-string 'fields eventTime, eventName, userIdentity.arn, sourceIPAddress, errorCode | sort eventTime desc | limit 50'
+```
+
+| Alarm (`solidago-dev-cis-…`) | What to do |
+|------------------------------|------------|
+| `root-account-use` | Nothing should use root. If it was not you, change the root password, check its MFA, and review every event it made. |
+| `console-signin-no-mfa` | Enable MFA on that IAM user now, or remove its console password if it should not have one. |
+| `iam-policy-change` | Expected when a merge's Terraform apply changes IAM (solidago, or the uvularia demo's deploy). Match the time to an apply run; with no apply in the window, treat it as an intrusion. |
+| `cloudtrail-config-change` | Expected only when a merge changes `modules/cloudtrail`. Otherwise run `aws cloudtrail get-trail-status --name solidago-dev-trail`: `StopLogging` is the classic cover-up step. |
+| `unauthorized-api-calls` | Fires at 5 or more in 5 minutes; the AWS Config recorder's own probing stays below that. Group the events by `userIdentity.arn`: a CI role hitting a new grant gap after a merge is a bug to fix in code, anything unfamiliar is an incident. |
+
+---
+
 ## Cost reference
 
 With everything running 24/7 the environment is ~$130–140/month; the largest
