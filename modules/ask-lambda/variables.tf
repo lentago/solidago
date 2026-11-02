@@ -78,7 +78,7 @@ variable "log_retention_days" {
 }
 
 variable "lambda_timeout" {
-  description = "Lambda timeout in seconds. One Anthropic call per invocation; 30s covers model latency with headroom. The handler aborts the model call 10s before this, so it can log the timeout and answer 504."
+  description = "Lambda timeout in seconds. One Anthropic call per invocation; the 30s default suits a model without extended thinking, and a caller using one sets more (pondview: 120). The handler aborts the model call 10s before this, so it can log the timeout and answer 504."
   type        = number
   default     = 30
 

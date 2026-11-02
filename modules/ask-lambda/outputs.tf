@@ -37,5 +37,5 @@ output "turnstile_secret_ssm_path" {
 
 output "cap_table_name" {
   description = "DynamoDB table holding the per-UTC-day answer counter."
-  value       = aws_dynamodb_table.caps.name
+  value       = aws_dynamodb_table.this.name
 }

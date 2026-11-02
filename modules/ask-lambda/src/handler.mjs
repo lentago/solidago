@@ -393,7 +393,9 @@ export async function handler(event) {
   }
 
   // Claimed only now, after every check above has passed, so a rejected or
-  // bot-failed request never spends a slot (#241).
+  // bot-failed request never spends a slot (#241). Not refunded if the model
+  // call below fails or times out: that call was made and may still be
+  // billed, and the cap bounds calls, not successes.
   let slot;
   try {
     slot = await reserveCapSlot(new Date().toISOString().slice(0, 10), Number(process.env.DAILY_REQUEST_CAP || 300));

@@ -464,8 +464,10 @@ module "ask_pondview" {
   # no trailing slash, to match the Origin header.
   allowed_origin = "https://pondviewlane.com,https://essexcrossingatmontserrat.com"
 
-  # The answer model is claude-opus-4-8 with extended thinking, which can run
-  # tens of seconds per turn — well past the 30s module default. Give it room.
+  # The answer model (MODEL in modules/ask-lambda/src/handler.mjs, currently
+  # claude-sonnet-5 with adaptive thinking) can run tens of seconds per turn,
+  # well past the 30s module default. Give it room; the handler aborts the
+  # model call at 110s and answers 504.
   lambda_timeout = 120
 
   # Errors, Throttles and URL 5xx alarms (#241) go to the platform alert topic.

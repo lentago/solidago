@@ -27,7 +27,10 @@
 #      the key.
 #   3. A durable daily cap: one atomic DynamoDB counter per UTC day, claimed
 #      only by a request that passed every other check, so the ceiling holds
-#      across containers and rejected requests never spend it.
+#      across containers and rejected requests never spend it. A claimed slot
+#      is not refunded when the model call then fails or times out: the call
+#      was made and may still be billed, and the cap bounds calls, not
+#      successes.
 #   4. An upstream timeout below the Lambda timeout, so a hung model call ends
 #      as a logged 504 rather than a platform kill.
 #   5. The OUTER BOUND is the spend cap on the Anthropic key, set in the
@@ -150,7 +153,7 @@ data "aws_iam_policy_document" "this" {
   statement {
     sid       = "DailyCapCounter"
     actions   = ["dynamodb:UpdateItem"]
-    resources = [aws_dynamodb_table.caps.arn]
+    resources = [aws_dynamodb_table.this.arn]
   }
 
   statement {
@@ -198,7 +201,7 @@ resource "aws_iam_role_policy" "this" {
 # retries a throttled write). The rows hold a date and a
 # number, nothing about any visitor, so the default AWS-owned encryption is
 # enough and point-in-time recovery would protect nothing worth keeping.
-resource "aws_dynamodb_table" "caps" {
+resource "aws_dynamodb_table" "this" {
   name           = "${local.name}-caps"
   billing_mode   = "PROVISIONED"
   read_capacity  = 1
@@ -252,7 +255,7 @@ resource "aws_lambda_function" "this" {
     variables = {
       ANTHROPIC_API_KEY_SSM_PATH = local.api_key_ssm_path
       ALLOWED_ORIGIN             = var.allowed_origin
-      CAP_TABLE                  = aws_dynamodb_table.caps.name
+      CAP_TABLE                  = aws_dynamodb_table.this.name
       DAILY_REQUEST_CAP          = tostring(var.daily_request_cap)
       UPSTREAM_TIMEOUT_MS        = tostring(local.upstream_timeout_ms)
       TURNSTILE_ENABLED          = var.turnstile_enabled ? "1" : "0"
