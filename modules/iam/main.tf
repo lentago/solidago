@@ -425,9 +425,8 @@ resource "aws_iam_role" "github_actions_terraform" {
 # and grants `<service>:*` on each by design; trivy singles out `s3:*`. #180
 # item 2 was resolved by #225 as a plan/apply SPLIT, not per-resource least
 # privilege: write credentials (including `s3:*`) live only on this role,
-# which only main can assume once the `terraform` environment carries its
-# branch policy (#225 step 2, then the live setting; until then any branch
-# declaring that environment can). PR plans run on the read-only plan role.
+# which only main can assume: the `terraform` environment carries a main-only
+# branch policy (#156). PR plans run on the read-only plan role below.
 #trivy:ignore:AVD-AWS-0345
 data "aws_iam_policy_document" "github_actions_terraform" {
   statement {
@@ -514,12 +513,15 @@ resource "aws_iam_role_policy_attachment" "github_actions_terraform" {
 #
 # Assumed by terraform.yml's plan job on pull_request (#225, #156). Trust is
 # the sub GitHub mints for a job that declares `environment: terraform-plan`,
-# which only the plan job does from #225 step 2 (no job declares it before). Not the bare pull_request sub: every PR job
+# which only the plan job does. Not the bare pull_request sub: every PR job
 # with id-token: write mints that one (claude.yml, claude-review.yml). The
 # `terraform-plan` environment has no branch policy, because PR refs must
 # reach it; a workflow edit on any branch can still declare it and get these
-# read-only credentials, never the apply role above. Fork PRs get no
-# id-token at all.
+# credentials, never the apply role above. Fork PRs get no id-token at all.
+# They cannot write, but they DO read this stack's secret values: refresh
+# reads the Secrets Manager values, the state stores them, and
+# ReadOnlyAccess returns Lambda environment variables (the ALB-log shipper's
+# Axiom token among them). Treat this role as a secret-reading credential.
 #
 # Known residual: the shared state bucket uses an S3 Bucket Key, so the KMS
 # encryption context is the bucket, not the object, and Decrypt on the state

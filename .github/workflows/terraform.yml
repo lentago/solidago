@@ -11,7 +11,20 @@
 #   3. Manual workflow_dispatch on main → apply (re-reads secrets and redeploys
 #      without waiting for an unrelated push; useful after credential rotation)
 #
-# Authenticates via OIDC using the terraform-specific IAM role.
+# Authenticates via OIDC with one role per GitHub environment (#225, #156):
+#   - plan  → `environment: terraform-plan` → read-only role
+#             solidago-dev-github-actions-terraform-plan. No branch policy:
+#             pull-request refs must reach it.
+#   - apply → `environment: terraform` → write role
+#             solidago-dev-github-actions-terraform. The environment's
+#             deployment branch policy allows `main` only (admins cannot
+#             bypass), so GitHub refuses the job on any other ref before it
+#             starts, whatever this file's `if:` says.
+# Each role trusts only its environment's OIDC sub, so the `environment:` key
+# is load-bearing for AWS access, not for secrets (both environments hold
+# none; the TF_VAR_* inputs are repo-level). Dropping it, or swapping the two,
+# fails at Configure AWS credentials (#155, #156). Settings are codified in
+# lentago/.github (lentago/.github#311).
 # Plan output is posted as a PR comment for review.
 
 name: Terraform
@@ -72,7 +85,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.tf == 'true' && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    environment: terraform
+    # Read-only plan environment; its OIDC sub is the plan role's only trust.
+    environment: terraform-plan
     # Hidden Pitzi Labs preview host is supplied from the repo Actions
     # variable (not committed to source). Required by var.pitzilabs_preview_host.
     env:
@@ -96,7 +110,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
         with:
-          role-to-assume: arn:aws:iam::365184644049:role/solidago-dev-github-actions-terraform # Account-specific OIDC role
+          role-to-assume: arn:aws:iam::365184644049:role/solidago-dev-github-actions-terraform-plan # Read-only plan role (#225)
           aws-region: us-east-1
 
       # Names the assumed role in the job log (#225 acceptance: plan vs apply
@@ -171,6 +185,7 @@ jobs:
     name: Terraform Apply
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Write environment: main-only deployment branch policy (#156).
     environment: terraform
     concurrency:
       group: terraform-apply
@@ -198,7 +213,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
         with:
-          role-to-assume: arn:aws:iam::365184644049:role/solidago-dev-github-actions-terraform # Account-specific OIDC role
+          role-to-assume: arn:aws:iam::365184644049:role/solidago-dev-github-actions-terraform # Apply (write) role (#225)
           aws-region: us-east-1
 
       # Names the assumed role in the job log (#225 acceptance: plan vs apply

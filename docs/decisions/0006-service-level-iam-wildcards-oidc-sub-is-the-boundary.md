@@ -70,3 +70,31 @@ boundary is what actually contains risk.
 - There is no second layer (boundary/SCP) beneath the OIDC gate. In this account
   that is an accepted trade; it would be the first thing to revisit if the account
   ever stopped being single-operator.
+
+## Amendment (2026-11-01, #225, #156)
+
+The wildcards stand; the boundary they rely on was weaker than this record
+said. The `terraform` environment had no deployment branch policy, so any job
+on any branch that declared `environment: terraform` could mint
+`repo:lentago/solidago:environment:terraform` and assume the write role. That
+includes a PR branch's own edit of `terraform.yml`. "Only the `terraform.yml`
+workflow" was never enforced.
+
+The pipeline is now split by environment:
+
+- The write role keeps the `environment:terraform` sub. The `terraform`
+  environment carries a deployment branch policy, `main` only, that
+  administrators cannot bypass. That policy is a GitHub-side check on the
+  one input the OIDC gate cannot see, the ref. There is still no AWS-side
+  boundary or SCP.
+- PR plans run in a `terraform-plan` environment under a separate read-only
+  role (`solidago-dev-github-actions-terraform-plan`: AWS `ReadOnlyAccess` plus
+  state read and the lockfile).
+
+The bare `pull_request` and `ref:refs/heads/main` subs were rejected as trusts.
+Every pull-request or main-context job with `id-token: write` mints them,
+including the Claude responder and reviewer workflows.
+
+Per-resource least privilege remains out of scope by design. The
+`trivy:ignore:AVD-AWS-0345` on the write role's `s3:*` stays and cites #225.
+The plan role's reach into other stacks' state in the shared bucket is #240.

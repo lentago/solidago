@@ -27,7 +27,7 @@ Patterns you can lift into your own org — each one points at the code that pro
 | Pattern | How it shows up here |
 |---------|----------------------|
 | **Plan-on-PR / apply-on-merge Terraform** — change management where the merged PR *is* the change record | [`.github/workflows/terraform.yml`](.github/workflows/terraform.yml): the `plan` job posts the full `terraform plan` diff as a PR comment; the `apply` job runs only on push to `main` / `workflow_dispatch`. Nobody runs `terraform apply` from a laptop. |
-| **OIDC-only cloud auth** — no static AWS keys anywhere | `role-to-assume` in [`terraform.yml`](.github/workflows/terraform.yml) is scoped to `repo:lentago/solidago:environment:terraform`; there are no AWS access keys in GitHub Secrets. |
+| **OIDC-only cloud auth** — no static AWS keys anywhere | the `role-to-assume` lines in [`terraform.yml`](.github/workflows/terraform.yml) are scoped to `repo:lentago/solidago:environment:terraform` (apply, `main` only) and `…:environment:terraform-plan` (read-only plan); there are no AWS access keys in GitHub Secrets. |
 | **Dual IAM-role trust split** — blast-radius containment between infra and workloads | [`modules/iam`](modules/iam) + [`docs/WORKLOAD_RELATIONSHIP.md`](docs/WORKLOAD_RELATIONSHIP.md): `solidago-dev-github-actions` (workloads push to ECR/ECS) vs `solidago-dev-github-actions-terraform` (this repo mutates infra). Neither can do the other's job. |
 | **Required check that survives path-filtered CI** — no docs-only PR gets stuck forever | The `gate` job in [`terraform.yml`](.github/workflows/terraform.yml) (`needs: [changes, plan]`, `if: always()`) reports green even when the plan is skipped, so the ruleset can require exactly `gate`. |
 | **Shared reusable workflows** — cross-repo CI logic centralized, not copy-pasted | [`.github/workflows/docs-check.yml`](.github/workflows/docs-check.yml) is a thin wrapper over `uses: lentago/shared-workflows/.github/workflows/docs-check.yml@main`. |
@@ -176,7 +176,7 @@ Both pipelines authenticate via GitHub's OIDC provider. No AWS access keys in Gi
 
 ### Terraform CI Roles: Plan vs Apply
 
-The Terraform pipeline uses two roles, one per GitHub environment (#225, #156). This is the target state. Until all three bootstrap steps below have landed, the plan still runs in the `terraform` environment on the write role, and that environment has no branch policy yet.
+The Terraform pipeline uses two roles, one per GitHub environment (#225, #156).
 
 | Role | Trusted sub | Permissions | Who can mint the sub |
 |---|---|---|---|
