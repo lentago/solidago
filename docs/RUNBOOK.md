@@ -316,11 +316,12 @@ deliberately cannot create one (#256).
 ## Cost reference
 
 With everything running 24/7 the environment is about $212–222/month (Cost
-Explorer, August–October 2026). In October the NAT Gateways (~$68), Fargate
-(~$37), RDS (~$29), the ALB (~$17) and ElastiCache (~$10) came to about $160,
-roughly $5.20/day. A selective teardown removes the NAT, ALB and Fargate share
-and, with `RDS_MODE=destroy`, the RDS/cache share too. Most of the remaining
-~$60 is CloudWatch custom metrics (~$23), public IPv4 addresses (~$15, which
-fall with the NAT EIPs and the ALB), WAF (~$9), KMS (~$4), Config and Route 53.
+Explorer, August–October 2026). Of October's ~$220, the NAT Gateways (~$68),
+Fargate (~$37), RDS (~$29), the ALB (~$17) and ElastiCache (~$10) came to about
+$160, roughly $5.20/day. Every selective teardown removes the NAT, ALB and
+Fargate share; `RDS_MODE=destroy` also removes the RDS/cache share. Most of
+October's remaining ~$60 is CloudWatch custom metrics (~$23), public IPv4
+addresses (~$15, which go with the NAT EIPs and the ALB on any teardown), WAF
+(~$9), KMS (~$4), Config and Route 53.
 The kept foundation is therefore not free, but much of that remainder shrinks
 with the teardown.
