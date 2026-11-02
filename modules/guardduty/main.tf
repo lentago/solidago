@@ -39,9 +39,10 @@
 #   - The runtime agent-management sub-settings are known to the provider but
 #     only matter while RUNTIME_MONITORING is on; all three are DISABLED.
 # The feature resources ignore additional_configuration, so these sub-settings
-# don't show as a perpetual replacement in every plan. That also means a
-# console change to them is not reported as drift. Live state read on
-# 2026-11-02 with `aws guardduty get-detector --detector-id <id>`.
+# don't show as a perpetual replacement in every plan (#262). The cost: a
+# console change to them is not reported as drift, and a sub-setting declared
+# here later would be ignored too, so #261 removes the ignore. Live state read
+# on 2026-11-02 with `aws guardduty get-detector --detector-id <id>`.
 #
 # Cost, estimated from this account's volumes on 2026-11-02 (us-east-1):
 #   CloudTrail management events  ~350k/month (~480/h)  x $4.00/M    ~ $1.40
@@ -91,22 +92,37 @@ resource "aws_guardduty_detector_feature" "this" {
   }
 }
 
-# Turns off RDS_DATA_RISK, which the pinned provider cannot name (#261). Runs
-# in the apply job with the apply role's guardduty:UpdateDetector. It re-runs
-# whenever the detector or the RDS_LOGIN_EVENTS feature is created or
-# replaced, since either could bring back the service default. Remove it once
-# additional_configuration can declare the setting.
+# Turns off RDS_DATA_RISK, which the pinned provider cannot name (#261, #262).
+# Runs in the apply job with the apply role's guardduty:UpdateDetector and
+# GetDetector, then reads the setting back and fails the apply unless it is
+# DISABLED. It re-runs when the detector is replaced, when the RDS_LOGIN_EVENTS
+# feature is created, replaced or updated, or when that feature's status
+# changes here, since any of those could bring back the service default.
+# Remove it once additional_configuration can declare the setting.
 resource "terraform_data" "rds_data_risk_off" {
   triggers_replace = {
-    detector_id   = aws_guardduty_detector.this.id
-    rds_data_risk = "DISABLED"
+    detector_id      = aws_guardduty_detector.this.id
+    rds_login_events = local.protection_plans["RDS_LOGIN_EVENTS"]
+    rds_data_risk    = "DISABLED"
   }
 
   provisioner "local-exec" {
     command = <<-EOT
+      set -eu
       aws guardduty update-detector --region ${data.aws_region.current.name} \
         --detector-id ${aws_guardduty_detector.this.id} \
         --features '[{"Name":"RDS_LOGIN_EVENTS","Status":"${local.protection_plans["RDS_LOGIN_EVENTS"]}","AdditionalConfiguration":[{"Name":"RDS_DATA_RISK","Status":"DISABLED"}]}]'
+      for attempt in 1 2 3 4 5 6; do
+        status=$(aws guardduty get-detector --region ${data.aws_region.current.name} \
+          --detector-id ${aws_guardduty_detector.this.id} \
+          --query "Features[?Name=='RDS_LOGIN_EVENTS'] | [0].AdditionalConfiguration[?Name=='RDS_DATA_RISK'] | [0].Status" \
+          --output text)
+        echo "RDS_DATA_RISK is $status (read $attempt)"
+        [ "$status" = "DISABLED" ] && exit 0
+        sleep 5
+      done
+      echo "RDS_DATA_RISK did not read back DISABLED" >&2
+      exit 1
     EOT
   }
 
