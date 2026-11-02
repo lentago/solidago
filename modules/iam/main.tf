@@ -461,6 +461,34 @@ data "aws_iam_policy_document" "github_actions_terraform" {
     resources = ["*"]
   }
 
+  # DynamoDB, scoped to this stack's own tables by name prefix rather than
+  # listed with the services above. The first table is the Ask function's
+  # durable daily cap (#241); the state lock is S3-native and needs none.
+  # Control plane only: the table lifecycle Terraform drives (create, update,
+  # delete, TTL, backups setting, tags) plus Describe*/List* metadata reads,
+  # which is what the provider's refresh calls (DescribeTable,
+  # DescribeTimeToLive, DescribeContinuousBackups, ListTagsOfResource, per
+  # CloudTrail). No item reads or writes, no backup, restore, import or export:
+  # the apply has no business with the rows.
+  statement {
+    sid    = "StackDynamoDBTables"
+    effect = "Allow"
+    actions = [
+      "dynamodb:CreateTable",
+      "dynamodb:UpdateTable",
+      "dynamodb:DeleteTable",
+      "dynamodb:Describe*",
+      "dynamodb:List*",
+      "dynamodb:UpdateTimeToLive",
+      "dynamodb:UpdateContinuousBackups",
+      "dynamodb:TagResource",
+      "dynamodb:UntagResource",
+    ]
+    resources = [
+      "arn:aws:dynamodb:${var.aws_region}:${var.aws_account_id}:table/${var.project}-${var.environment}-*",
+    ]
+  }
+
   statement {
     sid       = "CallerIdentity"
     effect    = "Allow"
