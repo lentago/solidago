@@ -517,8 +517,11 @@ resource "aws_iam_role_policy_attachment" "github_actions_terraform" {
 # with id-token: write mints that one (claude.yml, claude-review.yml). The
 # `terraform-plan` environment has no branch policy, because PR refs must
 # reach it; a workflow edit on any branch can still declare it and get these
-# read-only credentials, never the apply role above. Fork PRs get no
-# id-token at all.
+# credentials, never the apply role above. Fork PRs get no id-token at all.
+# They cannot write, but they DO read this stack's secret values: refresh
+# reads the Secrets Manager values, the state stores them, and
+# ReadOnlyAccess returns Lambda environment variables (the ALB-log shipper's
+# Axiom token among them). Treat this role as a secret-reading credential.
 #
 # Known residual: the shared state bucket uses an S3 Bucket Key, so the KMS
 # encryption context is the bucket, not the object, and Decrypt on the state
