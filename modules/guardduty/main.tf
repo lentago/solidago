@@ -27,10 +27,11 @@
 #   RUNTIME_MONITORING      off  agent-based, billed per vCPU, and the Fargate
 #                                tasks would need the agent sidecar
 #
-# AI Protection (AI_PROTECTION) postdates the pinned provider, cannot be
-# declared here, and stays at the service default, which is on. It analyzes
-# Bedrock, AgentCore and SageMaker activity, none of which this account uses,
-# so it has nothing to bill.
+# Two plans postdate the pinned provider and cannot be declared here: AI
+# Protection (AI_PROTECTION, which watches Bedrock, AgentCore and SageMaker
+# activity) and AI_ANALYST. CreateDetector left both DISABLED (read back from
+# the live detector on 2026-11-02), so they cost nothing. Turning either on
+# needs a provider bump and is a separate decision.
 #
 # Cost, estimated from this account's volumes on 2026-11-02 (us-east-1):
 #   CloudTrail management events  ~350k/month (~480/h)  x $4.00/M    ~ $1.40
