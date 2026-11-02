@@ -692,6 +692,15 @@ module "budgets" {
   environment           = var.environment
   monthly_budget_amount = "100"
   sns_topic_arn         = module.monitoring.sns_topic_arn
+
+  # GuardDuty's alarm (#243): about $6 a month expected (modules/guardduty
+  # header), so $10 means well past the estimate.
+  service_budgets = {
+    guardduty = {
+      limit    = "10"
+      services = ["Amazon GuardDuty"]
+    }
+  }
 }
 
 # --- uvularia demo sandbox (issue #195) ---
@@ -728,6 +737,15 @@ module "waf" {
   project     = var.project
   environment = var.environment
   alb_arn     = module.alb.alb_arn
+}
+
+# Threat detection (#243): findings of severity 4+ email the alert topic.
+module "guardduty" {
+  source = "../../modules/guardduty"
+
+  project         = var.project
+  environment     = var.environment
+  alarm_topic_arn = module.monitoring.sns_topic_arn
 }
 
 moved {

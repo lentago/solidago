@@ -190,6 +190,11 @@ output "waf_log_group_name" {
   value       = module.waf.log_group_name
 }
 
+output "guardduty_detector_id" {
+  description = "GuardDuty detector ID"
+  value       = module.guardduty.detector_id
+}
+
 output "dashboard_name" {
   description = "CloudWatch dashboard name"
   value       = module.dashboard.dashboard_name
