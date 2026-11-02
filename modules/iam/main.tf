@@ -461,6 +461,18 @@ data "aws_iam_policy_document" "github_actions_terraform" {
     resources = ["*"]
   }
 
+  # DynamoDB, scoped to this stack's own tables by name prefix rather than
+  # listed with the services above. The first table is the Ask function's
+  # durable daily cap (#241); the state lock is S3-native and needs none.
+  statement {
+    sid     = "StackDynamoDBTables"
+    effect  = "Allow"
+    actions = ["dynamodb:*"]
+    resources = [
+      "arn:aws:dynamodb:${var.aws_region}:${var.aws_account_id}:table/${var.project}-${var.environment}-*",
+    ]
+  }
+
   statement {
     sid       = "CallerIdentity"
     effect    = "Allow"
