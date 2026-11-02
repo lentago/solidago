@@ -31,4 +31,12 @@ variable "service_budgets" {
     services = list(string)
   }))
   default = {}
+
+  validation {
+    condition = alltrue([
+      for b in values(var.service_budgets) :
+      can(regex("^[0-9]+(\\.[0-9]+)?$", b.limit)) && try(tonumber(b.limit) > 0, false) && length(b.services) > 0
+    ])
+    error_message = "Each service budget needs a positive numeric limit in USD (digits, optional decimals, for example \"10\") and at least one service."
+  }
 }

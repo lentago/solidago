@@ -20,7 +20,9 @@
 #   S3_DATA_EVENTS          on   S3 data events: state, trail, ALB-log buckets
 #   RDS_LOGIN_EVENTS        on   login activity on solidago-dev-postgres
 #   LAMBDA_NETWORK_LOGS     on   network activity of the stack's functions
-#   EKS_AUDIT_LOGS          on   no EKS cluster today; free until one exists
+#   EKS_AUDIT_LOGS          on   no standing cluster; osmunda's ephemeral EKS
+#                                overlay ran here once (2026-08-17), and a
+#                                session's audit events cost cents
 #   EBS_MALWARE_PROTECTION  on   scans an EC2 volume after a finding; no EC2
 #   RUNTIME_MONITORING      off  agent-based, billed per vCPU, and the Fargate
 #                                tasks would need the agent sidecar
@@ -36,7 +38,7 @@
 #   RDS login events              db.t4g.micro, 2 vCPU   x $1.00      = $2.00
 #   S3 data events                under 0.2M/month       x $0.80/M    < $0.20
 #   Lambda network activity       three low-traffic functions         ~ $0.05
-#   EKS, EBS malware scans, AI    no such workloads                    = $0
+#   EKS, EBS malware scans, AI    none standing                        ~ $0
 #   Total about $6 a month (range $4-8). The first 30 days are a free trial.
 #   GuardDuty's usage page (or `aws guardduty get-usage-statistics`) shows the
 #   real figure once the detector runs.
