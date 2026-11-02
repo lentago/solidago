@@ -11,9 +11,9 @@
 # passwords instead (Decision #19, docs/reference-notes.md) — RDS creates
 # and rotates its own `rds!db-...` secret, so this secret's placeholder
 # value is never read by anything and no live credentials are ever written
-# to it. It is still provisioned and still IAM-readable (modules/iam grants
-# both ECS roles GetSecretValue on it), but nothing in this repo references
-# it via `valueFrom` or otherwise consumes it. Disposition (leave vs.
+# to it. It is still provisioned, but since #242 no ECS role can read it
+# (modules/iam), and nothing in this repo references it via `valueFrom` or
+# otherwise consumes it. Disposition (leave vs.
 # repurpose vs. remove) is tracked in issue #20; this comment only documents
 # the current state, not a decision.
 #
