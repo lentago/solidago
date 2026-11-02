@@ -71,9 +71,10 @@
 `solidago-dev/db-credentials` was provisioned in Phase 2 as a placeholder for
 RDS credentials. Phase 4 chose RDS-managed master passwords instead (Decision
 #19), so RDS creates and rotates its own separate `rds!db-...` secret and this
-one is never populated with real values or read by anything — both ECS IAM
-roles still grant `GetSecretValue` on it, but no task definition references it
-via `valueFrom`. It remains orphaned; see
+one is never populated with real values or read by anything. Since
+[#242](https://github.com/lentago/solidago/issues/242) neither ECS IAM role
+grants `GetSecretValue` on it (or on any `rds!*` secret): no task definition
+references either via `valueFrom`. It remains orphaned; see
 [issue #20](https://github.com/lentago/solidago/issues/20) for disposition
 options (leave / repurpose / remove).
 
@@ -194,7 +195,7 @@ _Quick-reference for architectural decisions made along the way. Full ADRs live 
 | 20 | db.t4g.micro (Graviton) over db.t3.micro | Same price tier, ~20% better price-performance on ARM. Signals awareness of Graviton ecosystem. | 2026-03-19 |
 | 21 | PostgreSQL 16 major-only version pin | Lets AWS pick latest minor version. Avoids breakage when AWS retires specific minor versions. | 2026-03-19 |
 | 22 | gp3 storage over gp2 | Baseline 3,000 IOPS + 125 MiB/s included free. gp2 at 20 GiB would only get ~100 IOPS. | 2026-03-19 |
-| 23 | IAM rds!* prefix pattern for secret access | Avoids circular dependency (RDS → IAM → RDS). Only RDS-managed secrets use the rds! prefix, so still least-privilege. | 2026-03-19 |
+| 23 | IAM rds!* prefix pattern for secret access | Avoids circular dependency (RDS → IAM → RDS). Only RDS-managed secrets use the rds! prefix, so still least-privilege. **Superseded by #242 (2026-11-02):** the shared ECS roles reached every RDS-managed secret from every site, and no service reads the database, so the grant was removed; a future database consumer gets its own roles scoped to the one secret (#237). | 2026-03-19 |
 | 24 | SNS consolidated into monitoring module (not separate) | SNS topic exists solely for alarm delivery in this project. No other consumers justify a standalone module. Reduces wiring in main.tf. | 2026-03-19 |
 | 25 | treat_missing_data = "notBreaching" on ALB alarms | ALB metrics like 5xx counts emit no data points when there are zero errors (rather than emitting "0"). Missing data should not trigger an alarm. | 2026-03-19 |
 | 26 | EngineCPUUtilization over CPUUtilization for ElastiCache | Valkey/Redis is single-threaded. Host CPU can be misleadingly low on multi-vCPU nodes while the engine thread is saturated. EngineCPUUtilization isolates the engine's thread. | 2026-03-19 |

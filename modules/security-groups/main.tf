@@ -144,6 +144,10 @@ resource "aws_vpc_security_group_egress_rule" "app_to_redis" {
 # - Any external APIs the application needs
 # We allow 443 outbound to 0.0.0.0/0 because the NAT Gateway and
 # private subnet routing already constrain where this traffic can go.
+# trivy:ignore:AVD-AWS-0104 — accepted for the reasons above: the platform has
+# no VPC endpoints, so ECR, CloudWatch Logs, Secrets Manager and the Axiom
+# FireLens output are all reached over the internet on 443.
+#trivy:ignore:AVD-AWS-0104
 resource "aws_vpc_security_group_egress_rule" "app_to_internet" {
   security_group_id = aws_security_group.app.id
   description       = "HTTPS outbound via NAT Gateway"

@@ -6,7 +6,8 @@
 # Assumed by the ECS control plane (not your app). Grants permission to:
 #   - Pull images from ECR
 #   - Write logs to CloudWatch
-#   - Read secrets from Secrets Manager (for env var injection)
+#   - Read the exact secrets a task definition injects at container start
+#     (today only the FireLens -> Axiom ingest header)
 #   - Decrypt using our KMS key (because the secrets are encrypted)
 #
 # AWS provides a managed policy (AmazonECSTaskExecutionRolePolicy) that
@@ -47,29 +48,28 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_base" {
 
 # Custom policy for Secrets Manager + KMS access
 data "aws_iam_policy_document" "ecs_task_execution_custom" {
-  # Allow reading the specific database credentials secret.
-  # Note: we're scoping to the exact secret ARN, not "all secrets."
-  # The wildcard at the end covers secret version IDs, which Secrets
-  # Manager appends (e.g., secret-arn:version-id:version-stage).
-  statement {
-    sid = "SecretsManagerRead"
-    actions = [
-      "secretsmanager:GetSecretValue",
-    ]
-    resources = concat(
-      [
-        var.db_credentials_secret_arn,
-        "${var.db_credentials_secret_arn}:*",
-      ],
-      var.rds_managed_secret_access ? [
-        "arn:aws:secretsmanager:${var.aws_region}:${var.aws_account_id}:secret:rds!*",
-      ] : [],
-      # Additional secrets the execution role may read (e.g. the FireLens ->
-      # Axiom ingest header). Passed as exact ARNs; ":*" suffixes cover
-      # version-id qualifiers, matching the db-credentials pattern above.
-      var.additional_execution_secret_arns,
-      [for arn in var.additional_execution_secret_arns : "${arn}:*"]
-    )
+  # Read only the secrets a task definition injects (secrets / secretOptions),
+  # passed as exact ARNs: today the FireLens -> Axiom ingest header. The ":*"
+  # suffixes cover the version-id qualifiers Secrets Manager accepts
+  # (secret-arn:version-id:version-stage).
+  #
+  # No database secret (#242): every service on these shared roles is a static
+  # nginx site, and no task definition injects the RDS master secret or the
+  # unused db-credentials placeholder, so the former rds!* wildcard and
+  # db-credentials grants are gone. A future service that does use the
+  # database gets its own task and execution roles, scoped to
+  # module.rds.master_user_secret_arn alone (the per-service split in #237),
+  # not a grant back on these shared ones.
+  dynamic "statement" {
+    for_each = length(var.additional_execution_secret_arns) > 0 ? [1] : []
+    content {
+      sid     = "SecretsManagerRead"
+      actions = ["secretsmanager:GetSecretValue"]
+      resources = concat(
+        var.additional_execution_secret_arns,
+        [for arn in var.additional_execution_secret_arns : "${arn}:*"],
+      )
+    }
   }
 
   # Allow decrypting with our KMS key (needed because the secret is
@@ -135,25 +135,15 @@ resource "aws_iam_role" "ecs_task" {
 
 # Minimal app-level permissions. The app might need to read from S3,
 # publish to SNS, etc. — we'll add those as the app is defined.
-# For now, we grant read access to the same secrets (the app may need
-# to read credentials at runtime, not just at task startup via env vars).
+#
+# No secret read (#242). The task role used to read the db-credentials
+# placeholder and every RDS-managed rds!* secret in the account, but no
+# service on it reads a secret at runtime: all three are static nginx sites,
+# and every site shares this role, so the grant reached any container in any
+# site. The KMS statement below is now unused as well; it, and the matching
+# AllowServiceRoleUsage entry in the main key's policy (modules/kms), go with
+# the per-service task roles in #237 rather than piecemeal here.
 data "aws_iam_policy_document" "ecs_task_custom" {
-  statement {
-    sid = "SecretsManagerRead"
-    actions = [
-      "secretsmanager:GetSecretValue",
-    ]
-    resources = concat(
-      [
-        var.db_credentials_secret_arn,
-        "${var.db_credentials_secret_arn}:*",
-      ],
-      var.rds_managed_secret_access ? [
-        "arn:aws:secretsmanager:${var.aws_region}:${var.aws_account_id}:secret:rds!*",
-      ] : []
-    )
-  }
-
   statement {
     sid = "KMSDecrypt"
     actions = [
