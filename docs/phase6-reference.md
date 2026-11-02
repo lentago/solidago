@@ -249,5 +249,5 @@ aws logs tail /ecs/foundry-dev-app --follow --profile foundry
 - [ ] **Terraform infrastructure pipeline** — separate workflow for `plan`/`apply` on `.tf` changes
 - [ ] **SHA-pinned task definitions** — update task def with exact SHA tag instead of `:latest`
 - [ ] **Slack/email notifications** — alert on deployment success/failure
-- [ ] **Rollback mechanism** — script to redeploy the previous SHA tag on failure
+- [x] **Rollback mechanism** — done without a script: every ECS service runs the deployment circuit breaker with automatic rollback to the last successful service revision ([#245](https://github.com/lentago/solidago/issues/245)). Reporting a rolled-back deploy as a failed job is [shared-workflows#92](https://github.com/lentago/shared-workflows/issues/92).
 - [ ] **Branch protection + PR workflow** — require PR reviews, run `plan` on PR, `apply` on merge
