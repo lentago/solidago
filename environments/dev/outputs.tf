@@ -185,6 +185,11 @@ output "waf_web_acl_arn" {
   value       = module.waf.web_acl_arn
 }
 
+output "waf_log_group_name" {
+  description = "CloudWatch Logs group holding the WAF request log"
+  value       = module.waf.log_group_name
+}
+
 output "dashboard_name" {
   description = "CloudWatch dashboard name"
   value       = module.dashboard.dashboard_name
