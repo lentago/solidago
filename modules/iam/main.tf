@@ -369,10 +369,22 @@ resource "aws_iam_role_policy_attachment" "github_actions" {
 # management permissions because Terraform needs to create/modify/destroy
 # AWS resources across many services.
 #
-# Security boundary: OIDC trust is scoped to the 'terraform' GitHub
-# environment, so only workflows running with `environment: terraform`
-# can assume this role. This separates infrastructure management
-# permissions from app deploy permissions (blast radius reduction).
+# This is the APPLY (write) role. Since #225/#156 the pipeline is split by
+# GitHub environment: the plan job runs in `terraform-plan` and assumes the
+# read-only github_actions_terraform_plan role below; only the apply job
+# (push to main / workflow_dispatch on main) runs in `terraform` and assumes
+# this one. This separates infrastructure management permissions from app
+# deploy permissions (blast radius reduction), and keeps write credentials
+# out of PR runs.
+#
+# Trust is the sub GitHub mints for a job that declares `environment:
+# terraform`. The sub carries no ref, so IAM cannot tell main from a branch;
+# the guard is the environment's deployment branch policy (main only, admins
+# cannot bypass), which is repo configuration a PR cannot weaken. It is set
+# once no plan uses the environment and codified in lentago/.github#311 (see
+# README "Terraform CI roles: plan vs apply"). Deliberately NOT the bare
+# ref:refs/heads/main sub: every main-context job with id-token: write mints
+# that one, including claude.yml's comment-triggered responder.
 # =============================================================================
 
 data "aws_iam_policy_document" "github_actions_terraform_assume" {
@@ -409,10 +421,13 @@ resource "aws_iam_role" "github_actions_terraform" {
   }
 }
 
-# trivy:ignore:AVD-AWS-0345 — the Terraform CI role manages ~20 services and
-# grants `<service>:*` on each by design; trivy singles out `s3:*`. Genuine
-# least-privilege for this role (or a read-only plan / write apply split) is
-# tracked in #180 item 2 — not something to half-fix from a lint pass.
+# trivy:ignore:AVD-AWS-0345 — the Terraform APPLY role manages ~20 services
+# and grants `<service>:*` on each by design; trivy singles out `s3:*`. #180
+# item 2 was resolved by #225 as a plan/apply SPLIT, not per-resource least
+# privilege: write credentials (including `s3:*`) live only on this role,
+# which only main can assume once the `terraform` environment carries its
+# branch policy (#225 step 2, then the live setting; until then any branch
+# declaring that environment can). PR plans run on the read-only plan role.
 #trivy:ignore:AVD-AWS-0345
 data "aws_iam_policy_document" "github_actions_terraform" {
   statement {
@@ -491,6 +506,152 @@ resource "aws_iam_policy" "github_actions_terraform" {
 resource "aws_iam_role_policy_attachment" "github_actions_terraform" {
   role       = aws_iam_role.github_actions_terraform.name
   policy_arn = aws_iam_policy.github_actions_terraform.arn
+}
+
+
+# =============================================================================
+# GITHUB ACTIONS TERRAFORM PLAN ROLE (read-only)
+#
+# Assumed by terraform.yml's plan job on pull_request (#225, #156). Trust is
+# the sub GitHub mints for a job that declares `environment: terraform-plan`,
+# which only the plan job does from #225 step 2 (no job declares it before). Not the bare pull_request sub: every PR job
+# with id-token: write mints that one (claude.yml, claude-review.yml). The
+# `terraform-plan` environment has no branch policy, because PR refs must
+# reach it; a workflow edit on any branch can still declare it and get these
+# read-only credentials, never the apply role above. Fork PRs get no
+# id-token at all.
+#
+# Known residual: the shared state bucket uses an S3 Bucket Key, so the KMS
+# encryption context is the bucket, not the object, and Decrypt on the state
+# CMK cannot be narrowed to this stack's state. ReadOnlyAccess's s3:Get* then
+# reaches the other stacks' state objects in the bucket. Tracked in #240.
+#
+# Permissions = AWS-managed ReadOnlyAccess (refresh reads across every
+# service the stack uses) plus the few things a plan needs that it lacks:
+#   - state: read env/dev/terraform.tfstate, and write/delete ONLY its
+#     S3-native lockfile (backend.tf use_lockfile = true → <key>.tflock;
+#     no DynamoDB table for this backend). A plan never writes state.
+#   - the tfstate CMK: Decrypt to read state, GenerateDataKey for the
+#     SSE-KMS lockfile PUT.
+#   - secret VALUES: ReadOnlyAccess omits secretsmanager:GetSecretValue, but
+#     refresh of aws_secretsmanager_secret_version (modules/secrets) and the
+#     data source in modules/alb-log-shipper read them. Scoped to this
+#     stack's own secrets; Decrypt on the main CMK only via Secrets Manager.
+# An apply attempted under this role fails on the first mutating call.
+# =============================================================================
+
+data "aws_iam_policy_document" "github_actions_terraform_plan_assume" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${var.github_org}/${var.github_repo}:environment:terraform-plan"]
+    }
+  }
+}
+
+resource "aws_iam_role" "github_actions_terraform_plan" {
+  name               = "${var.project}-${var.environment}-github-actions-terraform-plan"
+  assume_role_policy = data.aws_iam_policy_document.github_actions_terraform_plan_assume.json
+
+  max_session_duration = 3600
+
+  tags = {
+    Name = "${var.project}-${var.environment}-github-actions-terraform-plan"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions_terraform_plan_readonly" {
+  role       = aws_iam_role.github_actions_terraform_plan.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
+data "aws_iam_policy_document" "github_actions_terraform_plan" {
+  statement {
+    sid     = "TerraformStateRead"
+    actions = ["s3:GetObject"]
+    resources = [
+      "arn:aws:s3:::solidago-tfstate-${var.aws_account_id}/env/${var.environment}/terraform.tfstate",
+    ]
+  }
+
+  statement {
+    sid       = "TerraformStateList"
+    actions   = ["s3:ListBucket"]
+    resources = ["arn:aws:s3:::solidago-tfstate-${var.aws_account_id}"]
+  }
+
+  statement {
+    sid = "TerraformStateLock"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+    ]
+    resources = [
+      "arn:aws:s3:::solidago-tfstate-${var.aws_account_id}/env/${var.environment}/terraform.tfstate.tflock",
+    ]
+  }
+
+  statement {
+    sid = "TerraformStateKMS"
+    actions = [
+      "kms:Decrypt",
+      "kms:GenerateDataKey",
+      "kms:DescribeKey",
+    ]
+    resources = [var.tfstate_kms_key_arn]
+  }
+
+  statement {
+    sid     = "StackSecretValues"
+    actions = ["secretsmanager:GetSecretValue"]
+    # Both naming forms in modules/secrets: <project>-<env>/db-credentials and
+    # <project>-<env>-axiom-*. RDS-managed rds!db-* secrets stay out of reach.
+    resources = [
+      "arn:aws:secretsmanager:${var.aws_region}:${var.aws_account_id}:secret:${var.project}-${var.environment}-*",
+      "arn:aws:secretsmanager:${var.aws_region}:${var.aws_account_id}:secret:${var.project}-${var.environment}/*",
+    ]
+  }
+
+  statement {
+    sid       = "StackSecretDecrypt"
+    actions   = ["kms:Decrypt"]
+    resources = [var.kms_key_arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["secretsmanager.${var.aws_region}.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_policy" "github_actions_terraform_plan" {
+  name   = "${var.project}-${var.environment}-github-actions-terraform-plan"
+  policy = data.aws_iam_policy_document.github_actions_terraform_plan.json
+
+  tags = {
+    Name = "${var.project}-${var.environment}-github-actions-terraform-plan"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions_terraform_plan" {
+  role       = aws_iam_role.github_actions_terraform_plan.name
+  policy_arn = aws_iam_policy.github_actions_terraform_plan.arn
 }
 
 
