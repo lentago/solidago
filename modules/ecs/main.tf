@@ -242,6 +242,18 @@ resource "aws_ecs_service" "app" {
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
 
+  # Stop a deployment whose tasks keep failing to start or to pass the ALB
+  # health check, and roll back to the last deployment that reached steady
+  # state, instead of retrying forever while the old tasks drain (#245). ECS
+  # pins each deployment to the image digest it resolved, so the rollback
+  # returns to the previous image even though deploys reuse a mutable tag.
+  # ECS gives up after max(3, min(desired/2, 200)) failed task launches, so
+  # three failures at this service's size.
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   # Use the latest ACTIVE task definition revision. This prevents Terraform
   # from reverting to an older revision if CI/CD has deployed a newer one
   # outside of Terraform. Without this, every terraform apply would roll

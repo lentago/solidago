@@ -275,6 +275,13 @@ resource "aws_ecs_service" "this" {
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
 
+  # Roll a failing deployment back to the last steady one rather than
+  # retrying forever (#245; see the ecs module for how ECS decides).
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   force_new_deployment = true
 
   # The target group is only "associated with a load balancer" once its
