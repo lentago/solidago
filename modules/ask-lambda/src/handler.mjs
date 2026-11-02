@@ -21,7 +21,9 @@
  * deliberately differ).
  *
  * Environment (all set by Terraform in modules/ask-lambda/main.tf):
- *   ANTHROPIC_API_KEY   required — injected from the anthropic_api_key TF var
+ *   ANTHROPIC_API_KEY_SSM_PATH  required — SSM SecureString holding the
+ *                       Anthropic key, written out of band; the key itself is
+ *                       never in the environment or in Terraform state (#230)
  *   ALLOWED_ORIGIN      comma-separated origin allow-list; the CORS header
  *                       echoes the matching request Origin
  *   DAILY_REQUEST_CAP   default 300 (per warm container; belt over the API
@@ -39,6 +41,28 @@ const MAX_TOKENS = 8000; // total output cap (adaptive thinking + the visible an
 const MAX_HISTORY = 8; // prior conversation turns kept for context
 let served = 0;
 let day = new Date().toISOString().slice(0, 10);
+
+// The Anthropic key, read from SSM on the first request a container serves and
+// cached for the container's life. A failed read, an empty value or the
+// out-of-band placeholder is not cached, so the next request reads again and a
+// freshly written key takes effect without a redeploy. A 401 from the API
+// drops the cache as well, so after a rotation each warm container picks up
+// the new key on its next request. The AWS SDK v3 ships in the nodejs22.x
+// runtime, so this needs no bundled dependency. Never log the value.
+let apiKey = null;
+let ssm = null;
+async function getApiKey() {
+  if (apiKey) return apiKey;
+  const name = process.env.ANTHROPIC_API_KEY_SSM_PATH;
+  if (!name) throw new Error('ANTHROPIC_API_KEY_SSM_PATH is not set');
+  const { SSMClient, GetParameterCommand } = await import('@aws-sdk/client-ssm');
+  ssm ??= new SSMClient({});
+  const out = await ssm.send(new GetParameterCommand({ Name: name, WithDecryption: true }));
+  const value = String(out.Parameter?.Value || '').trim();
+  if (!value || /^PLACEHOLDER/.test(value)) throw new Error(`no key in ${name} yet (empty or placeholder)`);
+  apiKey = value;
+  return apiKey;
+}
 
 // One structured line per invocation, success or failure — see CLAUDE.md "Ask
 // logging (Axiom)" for the privacy/retention rationale behind each field. A
@@ -265,13 +289,21 @@ export async function handler(event) {
     { role: 'user', content: `Reference passages for this question:\n\n${passages}\n\nQuestion: ${question}` },
   ];
 
+  let key;
+  try {
+    key = await getApiKey();
+  } catch (err) {
+    logAsk({ site, question, outcome: 'upstream_error', model: MODEL, error: `api key unavailable: ${String(err?.message || err)}`.slice(0, 300) });
+    return { statusCode: 502, headers: cors, body: JSON.stringify({ error: 'model call unavailable' }) };
+  }
+
   const fetchStart = Date.now();
   let r;
   try {
     r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'x-api-key': key,
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
@@ -293,6 +325,7 @@ export async function handler(event) {
   }
   const latencyMs = Date.now() - fetchStart;
   if (!r.ok) {
+    if (r.status === 401) apiKey = null; // rotated or revoked: re-read SSM next request
     const errText = await r.text().catch(() => '');
     logAsk({ site, question, outcome: 'upstream_error', latency_ms: latencyMs, model: MODEL, upstream_status: r.status, error: errText.slice(0, 300) });
     return { statusCode: 502, headers: cors, body: JSON.stringify({ error: `model call failed (${r.status})` }) };

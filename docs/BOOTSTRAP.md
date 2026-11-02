@@ -157,7 +157,7 @@ Open `environments/dev/terraform.tfvars` in your editor. Each variable has a com
 - `lentago_preview_host` — an unguessable single-label subdomain of your primary domain (e.g. `my-secret-preview`)
 - `pondview_preview_host` — a separate unguessable subdomain for the Pond View site preview
 
-Variables with empty-string defaults (`grafana_cloud_account_id`, `grafana_cloud_external_id`, `anthropic_api_key`) are optional — leave them blank to skip those integrations. Variables with non-empty defaults (`project`, `environment`, `aws_region`) can be left as-is for a standard dev deployment.
+Variables with empty-string defaults (`grafana_cloud_account_id`, `grafana_cloud_external_id`) are optional — leave them blank to skip those integrations. The Ask Lambda's Anthropic key is deliberately not a variable: it is written out of band to an SSM SecureString so it never enters state (see [`modules/ask-lambda/main.tf`](../modules/ask-lambda/main.tf)). Variables with non-empty defaults (`project`, `environment`, `aws_region`) can be left as-is for a standard dev deployment.
 
 Update the backend configuration in `environments/dev/backend.tf` to reference your state bucket:
 

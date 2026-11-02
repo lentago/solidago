@@ -144,6 +144,10 @@ module "iam" {
     "lentago@297986315/site-pondviewlane-com@1304395322",
   ]
 
+  # Hand-written SSM slots the apply job's post-apply check reads (#230); keep
+  # in step with SSM_SLOTS in .github/workflows/terraform.yml.
+  out_of_band_secret_parameter_arns = [module.ask_pondview.api_key_ssm_arn]
+
   # Phase 4: grant ECS roles access to RDS-managed secrets
   rds_managed_secret_access = true
 
@@ -437,8 +441,10 @@ module "site_pondview" {
 # retrieved passages to and gets back a claude-haiku-4-5 answer (see
 # modules/ask-lambda). CORS is locked to the site's current delivery origin —
 # the hidden preview host — so only the trustee-review site can call it; add the
-# public apex here at launch. The Anthropic key rides in as a sensitive var from
-# the repo Actions secret (never committed). The site learns this endpoint via
+# public apex here at launch. The Anthropic key is not a Terraform value: the
+# function reads it at runtime from an SSM SecureString written out of band
+# (output pondview_ask_api_key_ssm_path; see modules/ask-lambda, #230), so it
+# never enters tfstate. The site learns this endpoint via
 # the PUBLIC_ASK_ENDPOINT Actions variable in lentago/site-pondviewlane-com,
 # wired to the module's function_url output.
 module "ask_pondview" {
@@ -456,8 +462,7 @@ module "ask_pondview" {
   # `vary: origin`). Apex-only: www hosts are 301-redirected to their apex at the
   # container (nginx) layer, so no www Origin ever reaches here. Scheme-qualified,
   # no trailing slash, to match the Origin header.
-  allowed_origin    = "https://pondviewlane.com,https://essexcrossingatmontserrat.com"
-  anthropic_api_key = var.anthropic_api_key
+  allowed_origin = "https://pondviewlane.com,https://essexcrossingatmontserrat.com"
 
   # The answer model is claude-opus-4-8 with extended thinking, which can run
   # tens of seconds per turn — well past the 30s module default. Give it room.

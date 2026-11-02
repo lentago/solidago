@@ -221,6 +221,11 @@ output "pondview_ask_endpoint_url" {
   value       = module.ask_pondview.function_url
 }
 
+output "pondview_ask_api_key_ssm_path" {
+  description = "SSM SecureString the pondview Ask Lambda reads its Anthropic key from. Written out of band (aws ssm put-parameter), never by Terraform, so the key stays out of state. The Terraform workflow's post-apply check fails while it is missing or still holds its placeholder."
+  value       = module.ask_pondview.api_key_ssm_path
+}
+
 output "pondview_domain_name_servers" {
   description = "Nameservers to set at the registrar (Squarespace) for pondviewlane.com — the re-delegation step of the two-phase apex-domain apply."
   value       = module.pondview_domain.name_servers
