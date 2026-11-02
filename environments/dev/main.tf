@@ -98,16 +98,15 @@ module "secrets" {
 module "iam" {
   source = "../../modules/iam"
 
-  environment               = var.environment
-  project                   = var.project
-  aws_account_id            = data.aws_caller_identity.current.account_id
-  aws_region                = var.aws_region
-  kms_key_arn               = module.kms.key_arn
-  tfstate_kms_key_arn       = data.aws_kms_alias.tfstate.target_key_arn
-  db_credentials_secret_arn = module.secrets.db_credentials_secret_arn
-  github_org                = "lentago"
-  github_repo               = "solidago"                     # Terraform pipeline role's OIDC trust
-  app_github_repo           = "site-icecreamtofightwith-com" # App deploy role's OIDC trust (post-#55 split)
+  environment         = var.environment
+  project             = var.project
+  aws_account_id      = data.aws_caller_identity.current.account_id
+  aws_region          = var.aws_region
+  kms_key_arn         = module.kms.key_arn
+  tfstate_kms_key_arn = data.aws_kms_alias.tfstate.target_key_arn
+  github_org          = "lentago"
+  github_repo         = "solidago"                     # Terraform pipeline role's OIDC trust
+  app_github_repo     = "site-icecreamtofightwith-com" # App deploy role's OIDC trust (post-#55 split)
 
   # Additional workload repos that deploy onto this platform via the same app
   # OIDC role. Each site lives in its own repo and deploys via the shared
@@ -147,9 +146,6 @@ module "iam" {
   # Hand-written SSM slots the apply job's post-apply check reads (#230); keep
   # in step with SSM_SLOTS in .github/workflows/terraform.yml.
   out_of_band_secret_parameter_arns = [module.ask_pondview.api_key_ssm_arn]
-
-  # Phase 4: grant ECS roles access to RDS-managed secrets
-  rds_managed_secret_access = true
 
   # Observability fabric Phase 2: the execution role reads the FireLens ->
   # Axiom ingest header at container start.

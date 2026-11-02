@@ -36,21 +36,10 @@ variable "tfstate_kms_key_arn" {
   type        = string
 }
 
-variable "db_credentials_secret_arn" {
-  description = "ARN of the database credentials secret in Secrets Manager"
-  type        = string
-}
-
 # GitHub repo info for OIDC trust policy scoping.
 # The trust policy will say "only GitHub Actions running from THIS repo
 # can assume this role." Without this, any GitHub repo could potentially
 # authenticate if they knew the role ARN.
-variable "rds_managed_secret_access" {
-  description = "Grant ECS roles access to RDS-managed secrets (rds!* prefix)"
-  type        = bool
-  default     = false
-}
-
 variable "github_org" {
   description = "GitHub organization or username"
   type        = string
