@@ -467,6 +467,9 @@ module "ask_pondview" {
   # The answer model is claude-opus-4-8 with extended thinking, which can run
   # tens of seconds per turn — well past the 30s module default. Give it room.
   lambda_timeout = 120
+
+  # Errors, Throttles and URL 5xx alarms (#241) go to the platform alert topic.
+  alarm_topic_arn = module.monitoring.sns_topic_arn
 }
 
 # --- Apex domain: pondviewlane.com (public launch) ---
