@@ -99,7 +99,7 @@ Everything you need, in one list. No hunting through other repos.
   - **git**, configured with your identity.
 - **Access you must already have:** AWS admin credentials on your machine
   (`aws sts get-caller-identity` must succeed); permission to edit NS records
-  at your registrar; admin on your GitHub repo (to create an Environment and a
+  at your registrar; admin on your GitHub repo (to create two Environments and a
   branch-protection ruleset).
 - **Optional integrations** (all skipped cleanly if you leave them blank):
   - **Grafana Cloud** — set `grafana_cloud_account_id` / `_external_id` to
@@ -162,7 +162,7 @@ points at the tracking issue.
 | Ours | Where it lives | Put yours here | Tracked |
 |---|---|---|---|
 | AWS account `365184644049` (state bucket suffix + state CMK ARN) | `environments/dev/backend.tf:3,12` | Your 12-digit account ID | mechanical |
-| AWS account `365184644049` (Terraform-pipeline role ARN, ×2) | `.github/workflows/terraform.yml:99,196` | Your account ID | mechanical |
+| AWS account `365184644049` (Terraform-pipeline role ARN, ×2) | `.github/workflows/terraform.yml:113,216` | Your account ID | mechanical |
 | Cross-repo role ARN in a code comment (drosera's `drosera-github-actions-terraform` role) | `modules/iam/main.tf:516` | Delete — it documents a fleet cross-repo arrangement you don't have | mechanical |
 | `solidago-*` resource naming (state bucket, CMK alias, all AWS resource names) | driven by `project` in `terraform.tfvars`; bucket/alias also in `environments/dev/backend.tf` and `scripts/bootstrap/bootstrap-backend.sh` | Your project short-name (keep it consistent across all three places) | mechanical |
 | Primary domain `icecreamtofightwith.com` + wildcard `*.icecreamtofightwith.com` | `environments/dev/main.tf:174,176` (`module.dns`) | Your registered domain | mechanical |
@@ -170,13 +170,13 @@ points at the tracking issue.
 | Apex site `pondviewlane.com` + Google token + DMARC | `environments/dev/main.tf:477–507` (`module.pondview_domain`) | Delete the block | mechanical |
 | Second apex `essexcrossingatmontserrat.com` fronting the same backend | `environments/dev/main.tf:525–552` (`module.essexcrossing_domain`) | Delete the block | mechanical |
 | Extra site backends `module.site_lentago` / `module.site_pondview` / `module.ask_pondview` | `environments/dev/main.tf:271–351,395–472` | Delete the blocks (or adapt one as a template for your own second site) | mechanical |
-| Out-of-band secret slot `/solidago-dev-pondview-ask/anthropic-api-key` checked after every apply | `.github/workflows/terraform.yml:219` (`SSM_SLOTS`, step *Check out-of-band secrets*) | Delete the step once the Ask module is deleted; else your `pondview_ask_api_key_ssm_path` output value | mechanical |
+| Out-of-band secret slot `/solidago-dev-pondview-ask/anthropic-api-key` checked after every apply | `.github/workflows/terraform.yml:244` (`SSM_SLOTS`, step *Check out-of-band secrets*) | Delete the step once the Ask module is deleted; else your `pondview_ask_api_key_ssm_path` output value | mechanical |
 | CORS origins `https://pondviewlane.com,https://essexcrossingatmontserrat.com` | `environments/dev/main.tf:461` (`module.ask_pondview`) | N/A once the Ask module is deleted; else your site origins | mechanical |
 | Hand-allocated ALB listener-rule priorities `110/120/130/140/150` | `environments/dev/main.tf` (`listener_rule_priority` on each site/apex module) | Keep each priority unique per rule you retain; there is no auto-allocator | mechanical |
 | GitHub org `lentago` + workload repos (`site-icecreamtofightwith-com`, `site-lentago-dev`, immutable `lentago@…/site-pondviewlane-com@…`) | `environments/dev/main.tf:98–146` (`module.iam` inputs) | Your org and your workload repo name(s) — this is the OIDC deploy trust | mechanical |
 | Cross-repo tfstate role `dotgithub-github-actions-terraform` trusting `lentago/.github` | `modules/iam/main.tf:~500–560` + `dotgithub_repo` input | Delete if you have no shared-workflows repo needing state access | mechanical |
-| Terraform-pipeline OIDC trust `repo:<org>/solidago:environment:terraform` | `github_org` / `github_repo` inputs of `module.iam` in `environments/dev/main.tf`; the first apply creates the role (BOOTSTRAP Step 7 verifies it) | Your org/repo | mechanical |
-| Axiom datasets `cjp-solidago-ecs` / `cjp-solidago-alb` (FireLens sidecars, ingest secrets, ALB-log shipper) | `axiom_ecs_dataset` / `axiom_alb_dataset` in `terraform.tfvars`; our values are set in `.github/workflows/terraform.yml:86–87,183–184` | Delete those two workflow lines and leave both variables `""` to skip Axiom (apps log to CloudWatch via plain awslogs, no shipper Lambda); or set your own datasets and populate the two ingest secrets out-of-band | mechanical — optional since [#188](https://github.com/lentago/solidago/issues/188), like Grafana Cloud |
+| Terraform-pipeline OIDC trusts `repo:<org>/solidago:environment:terraform` (apply) and `…:environment:terraform-plan` (plan) | `github_org` / `github_repo` inputs of `module.iam` in `environments/dev/main.tf`; the first apply creates both roles (BOOTSTRAP Step 7 verifies them) | Your org/repo | mechanical |
+| Axiom datasets `cjp-solidago-ecs` / `cjp-solidago-alb` (FireLens sidecars, ingest secrets, ALB-log shipper) | `axiom_ecs_dataset` / `axiom_alb_dataset` in `terraform.tfvars`; our values are set in `.github/workflows/terraform.yml:100–101,203–204` | Delete those two workflow lines and leave both variables `""` to skip Axiom (apps log to CloudWatch via plain awslogs, no shipper Lambda); or set your own datasets and populate the two ingest secrets out-of-band | mechanical — optional since [#188](https://github.com/lentago/solidago/issues/188), like Grafana Cloud |
 | Monthly budget threshold `$100` | `environments/dev/main.tf` (`module.budgets`) | Your budget | mechanical |
 
 **On plan cleanliness:** our own repo's CI plans are *not* clean — three ECS
@@ -206,8 +206,8 @@ assumes the one before it worked.
 | 7 | Real init + plan: `terraform init` then `terraform plan`. | Plan completes and shows **only creates** (a fresh account has no drift — see #184). | |
 | 8 | First apply from your machine (creates the OIDC provider, the app deploy role and the Terraform-pipeline role; ~10–15 min): `terraform apply`. | Apply succeeds; `terraform output` shows `route53_name_servers`, `github_actions_role_arn` and `github_actions_terraform_role_arn`. | |
 | 9 | Delegate DNS: set your registrar's NS records to the `route53_name_servers` output. | `dig NS <YOUR_DOMAIN>` returns the four Route 53 nameservers. | |
-| 10 | **⚠️ Identity-provider check — the trip hazard. See the warning below.** Confirm the Terraform-pipeline role that Step 8 created trusts your repository, per [BOOTSTRAP Step 7](docs/BOOTSTRAP.md#step-7-verify-the-terraform-pipeline-iam-role). Do not create it by hand. | The role's `sub` condition reads `repo:<YOUR_ORG>/<YOUR_REPO>:environment:terraform`, and its ARN is in both `role-to-assume` lines of `terraform.yml`. | |
-| 11 | Create the GitHub `terraform` Environment and a `main` branch-protection ruleset requiring the `gate` check ([BOOTSTRAP Steps 8–9](docs/BOOTSTRAP.md#step-8-create-the-github-environment)). | Repo → Settings shows the `terraform` environment and the ruleset. | |
+| 10 | **⚠️ Identity-provider check — the trip hazard. See the warning below.** Confirm the two Terraform-pipeline roles that Step 8 created trust your repository, per [BOOTSTRAP Step 7](docs/BOOTSTRAP.md#step-7-verify-the-terraform-pipeline-iam-role). Do not create it by hand. | The roles' `sub` conditions read `repo:<YOUR_ORG>/<YOUR_REPO>:environment:terraform` (apply) and `…:environment:terraform-plan` (plan), and each ARN is in its job's `role-to-assume` line of `terraform.yml`. | |
+| 11 | Create the GitHub `terraform-plan` and `terraform` Environments, the second with a `main`-only deployment branch policy that admins cannot bypass, and a `main` branch-protection ruleset requiring the `gate` check ([BOOTSTRAP Steps 8–9](docs/BOOTSTRAP.md#step-8-create-the-github-environments)). | Repo → Settings shows both environments, `terraform` limited to `main`, and the ruleset. | |
 | 12 | Verify the pipelines: open a trivial PR (plan runs), merge it (apply runs) ([BOOTSTRAP Step 10](docs/BOOTSTRAP.md#step-10-verify-the-pipelines)). | The PR's required **`gate`** check is green (with **Terraform Plan** green beneath it); the post-merge **Apply** completes. | |
 
 **If a check doesn't go green,** stop at that step and see
@@ -221,9 +221,10 @@ assumes the one before it worked.
 > this guide said to, then `terraform import` it. Against this code that
 > either fails the apply with `EntityAlreadyExists` or fails the CLI call.
 > The real trip hazard is the OIDC `sub` claim
-> (`repo:<org>/<repo>:environment:terraform`): if `github_org` /
+> (`repo:<org>/<repo>:environment:terraform`, and `…:terraform-plan` for the
+> plan role): if `github_org` /
 > `github_repo` in `module.iam` don't name your fork exactly, CI cannot assume
-> the role and every plan fails at *Configure AWS credentials*. The commands
+> the roles and every plan fails at *Configure AWS credentials*. The commands
 > to check it are in
 > [BOOTSTRAP Step 7](docs/BOOTSTRAP.md#step-7-verify-the-terraform-pipeline-iam-role).
 
