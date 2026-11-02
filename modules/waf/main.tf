@@ -134,14 +134,17 @@ moved {
 # or session token is written. The group stays on the default key, per ADR-0009
 # decision 1: this is request metadata for operators, like the flow logs.
 #
-# Cost: the ACL saw about 490,000 requests in the 30 days to 2026-11-02 (~10%
-# blocked). At an assumed 1.5–2.5 KB per record that is roughly 0.7–1.2 GB a
-# month, billed as vended logs at $0.50/GB. The account ingested about 2.8 GB of
-# logs in October 2026, plus about 0.5 GB a month for the CloudTrail copy since
-# #244, so this volume still fits inside CloudWatch's 5 GB monthly free tier:
-# about $0 now, at most ~$0.60 a month once the free tier is used up.
-# Storage at 30 days' retention is cents. The volume scales with traffic, so
-# a request flood raises it, alongside WAF's own per-request charge.
+# Cost (estimate, 2026-11-02): the ACL saw about 490,000 requests in the 30
+# days to 2026-11-02 (~10% blocked). The record size is an assumption, 1.5-2.5
+# KB, to be checked against the group's IncomingBytes once it runs. On that
+# assumption this is roughly 0.7-1.2 GB a month, billed as vended logs at
+# $0.50/GB. Vended logs count against CloudWatch's 5 GB monthly free tier:
+# October 2026's 2.1 GB of vended logs (mostly flow logs) and 0.7 GB of
+# standard ingestion billed $0. With about 0.5 GB a month more for the
+# CloudTrail copy since #244, this still fits under 5 GB, so it costs about $0
+# now and at most about $0.60 a month once the tier is used up. Storage at 30
+# days' retention is cents. The volume scales with traffic, so a request flood
+# raises it, alongside WAF's own per-request charge.
 
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
