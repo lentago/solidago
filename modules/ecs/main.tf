@@ -244,9 +244,11 @@ resource "aws_ecs_service" "app" {
 
   # Stop a deployment whose tasks keep failing to start or to pass the ALB
   # health check, and roll back to the last deployment that reached steady
-  # state, instead of retrying forever while the old tasks drain (#245). ECS
-  # pins each deployment to the image digest it resolved, so the rollback
-  # returns to the previous image even though deploys reuse a mutable tag.
+  # state, instead of retrying forever while the old tasks drain (#245). Each
+  # ECS service revision records the digest its image tag resolved to, and a
+  # rollback returns to the last successfully deployed revision, so it lands on
+  # the previous image even though deploys reuse a mutable tag (ECS developer
+  # guide, "Amazon ECS service revisions"; the ContainerImage API type).
   # ECS gives up after max(3, min(desired/2, 200)) failed task launches, so
   # three failures at this service's size.
   deployment_circuit_breaker {
