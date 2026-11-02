@@ -226,7 +226,7 @@ For the detailed, step-by-step deployment reference, see [docs/BOOTSTRAP.md](doc
 
 ## Cost
 
-With all resources running 24/7, the environment costs approximately $130-140/month. The largest line items are NAT Gateways (~$65), ALB (~$16), RDS (~$15), and ElastiCache (~$12). Budget alerts notify via email at 50%, 80%, and 100% of a $100/month threshold. GuardDuty (#243) adds about $6/month after its 30-day free trial (breakdown in the [`modules/guardduty`](modules/guardduty/main.tf) header) and has its own $10/month budget, which alerts on actual or forecast spend above it.
+With all resources running 24/7, the environment costs about $212–222/month (Cost Explorer, August–October 2026). The largest line items in October 2026 were NAT Gateways (~$68), ECS Fargate (~$37), RDS (~$29), CloudWatch (~$23, almost all custom metrics), the ALB (~$17), public IPv4 addresses (~$15), ElastiCache (~$10), and WAF (~$9). Budget alerts notify via email at 50%, 80%, and 100% of a $100/month threshold. That threshold sits below the run rate by choice ([#260](https://github.com/lentago/solidago/issues/260)), so all three fire every month. GuardDuty (#243) adds about $6/month after its 30-day free trial (breakdown in the [`modules/guardduty`](modules/guardduty/main.tf) header) and has its own $10/month budget, which alerts on actual or forecast spend above it.
 
 ## Related Repositories
 
