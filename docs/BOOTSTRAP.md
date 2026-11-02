@@ -246,7 +246,7 @@ Each Terraform role trusts only the OIDC `sub` of one GitHub environment, so the
 | `terraform-plan` | the plan job, on pull requests | none: pull-request refs must reach it |
 | `terraform` | the apply job, on `main` | deployment branch policy: **`main` only**, and administrators **cannot** bypass it |
 
-The branch policy on `terraform` is what keeps the write role on `main`. The role's `sub` carries no ref, so IAM cannot check the branch itself, and an `if:` in the workflow file is editable by any PR that touches it (#156). **Do this step before you push any branch other than `main`.** From the Step 5 apply on, the write role exists, and until the policy does, a workflow on any branch that declares `environment: terraform` can assume it. A workflow run also auto-creates a missing environment with no protection, so creating it later does not close the gap retroactively; check it.
+The branch policy on `terraform` is what keeps the write role on `main`. The role's `sub` carries no ref, so IAM cannot check the branch itself, and an `if:` in the workflow file is editable by any PR that touches it (#156). **Do this step before you push any branch other than `main`.** From the Step 5 apply on, the write role exists, and until the policy does, a workflow on any branch that declares `environment: terraform` can assume it. A workflow run auto-creates a missing environment with no protection. If `terraform` already exists when you reach this step, add the policy to it.
 
 In your repo → Settings → Environments:
 
