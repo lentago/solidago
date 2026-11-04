@@ -983,9 +983,12 @@ resource "aws_iam_role_policy_attachment" "betula_github_actions_terraform" {
 # folders, alert rules) in solidago's shared tfstate bucket. This role gives
 # drosera's CI exactly what the betula role above gives lentago/betula:
 # read/write on its own state key, the tfstate CMK, and the shared lock table.
-# It cannot read solidago's own state, any other repo's state, or any other AWS
-# service; the Grafana provider authenticates with Grafana Cloud credentials
-# held as drosera repo secrets, not via AWS.
+# It cannot read solidago's own state or any other AWS service; the Grafana
+# provider authenticates with Grafana Cloud credentials held as drosera repo
+# secrets, not via AWS. Of other repos' state it can read exactly one object,
+# betula's (read-only, BetulaStateRead below), so drosera consumes Axiom tokens
+# from betula's `axiom_tokens` output via terraform_remote_state
+# (lentago/betula#119 option A; solidago#268).
 #
 # Phase 1 of lentago/drosera#169, which completes the homelab-observability ->
 # drosera rename: drosera's CI and its state move onto this role and the
@@ -1047,6 +1050,19 @@ data "aws_iam_policy_document" "drosera_github_actions_terraform" {
     resources = [
       "arn:aws:s3:::solidago-tfstate-${var.aws_account_id}/drosera/terraform.tfstate",
     ]
+  }
+
+  # Read-only on betula's state key, for a terraform_remote_state read of its
+  # axiom_tokens output (lentago/betula#119 option A; solidago#268). A remote
+  # state read never writes and never takes the lock, so: GetObject only, no
+  # PutObject, no lock-table or .tflock grant, no ListBucket. Decrypt comes
+  # from TerraformStateKMS below. With the bucket's S3 Bucket Key enabled the
+  # KMS grant cannot be scoped per object (#240), so this resource is the only
+  # per-key boundary: keep it to this one key.
+  statement {
+    sid       = "BetulaStateRead"
+    actions   = ["s3:GetObject"]
+    resources = ["arn:aws:s3:::solidago-tfstate-${var.aws_account_id}/betula/terraform.tfstate"]
   }
 
   statement {
