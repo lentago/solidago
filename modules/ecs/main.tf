@@ -197,6 +197,21 @@ resource "aws_ecs_task_definition" "app" {
   }
 }
 
+# --- Cluster capacity providers ---
+# FARGATE and FARGATE_SPOT are available to every service on the cluster
+# (#277). A service that sets launch_type (the app service) ignores them; a
+# service with a capacity_provider_strategy (the sites, via modules/site) uses
+# its own; anything that sets neither falls back to on-demand FARGATE.
+resource "aws_ecs_cluster_capacity_providers" "this" {
+  cluster_name       = aws_ecs_cluster.this.name
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+  }
+}
+
 # --- ECS Service ---
 # The service controller maintains the desired number of tasks and
 # integrates with the ALB. It handles:
