@@ -17,10 +17,9 @@ resource "aws_cloudwatch_log_group" "app" {
 # A logical grouping for services and tasks. Container Insights is off
 # (#271): it is not free. It publishes per-task and per-service metrics to
 # the ECS/ContainerInsights namespace, each billed as a CloudWatch custom
-# metric (88 of the account's 91 custom metrics, nearly all of the $22.50
-# custom-metric charge in October 2026). The service-level
-# CPUUtilization and MemoryUtilization metrics in the AWS/ECS namespace are
-# free and stay. The alarms (modules/monitoring) and the target-tracking
+# metric (about $0.30 per metric per month), and a cluster with a few
+# services publishes dozens of them. The service-level CPUUtilization and
+# MemoryUtilization metrics in the AWS/ECS namespace are free and stay. The alarms (modules/monitoring) and the target-tracking
 # scaling policies (modules/ecs-autoscaling) read those, not Container
 # Insights.
 resource "aws_ecs_cluster" "this" {
