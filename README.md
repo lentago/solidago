@@ -204,7 +204,7 @@ Security groups are centralized in one module to avoid Terraform resource confli
 
 ### WAF with Managed Rules, Not Custom Rules
 
-AWS Managed Rule Groups are auto-updated by AWS's threat research team, and the Common Rule Set covers the OWASP Top 10. Each group costs $1/month per web ACL, so this stack runs only the Common Rule Set ([#277](https://github.com/lentago/solidago/issues/277)). Custom rules add complexity without meaningful benefit for a static content site. The rate-limiting rule is the only custom rule — simple and effective.
+AWS Managed Rule Groups are auto-updated by AWS's threat research team, and the Common Rule Set is modeled on common OWASP Top 10 attack patterns (it does not cover the whole list). Each group costs $1/month per web ACL, so this stack runs only the Common Rule Set ([#277](https://github.com/lentago/solidago/issues/277)). Custom rules add complexity without meaningful benefit for a static content site. The rate-limiting rule is the only custom rule — simple and effective.
 
 ### CloudWatch Over Third-Party Observability
 

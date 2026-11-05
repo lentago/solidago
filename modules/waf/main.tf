@@ -10,11 +10,12 @@ resource "aws_wafv2_web_acl" "this" {
   # --- AWS Managed Rule Group ---
   # One managed group plus the rate limit (#277). Each rule or rule group in
   # a web ACL is billed at $1/month on top of the ACL itself. Known Bad
-  # Inputs (Log4j and Java-deserialization patterns, among others) and the
-  # Amazon IP Reputation List were removed for cost. The sites behind this
-  # ALB are static nginx sites whose forms post to endpoints outside the ALB
-  # (docs/decisions/0009), so the Common Rule Set and the rate limit cover
-  # what reaches them.
+  # Inputs and the Amazon IP Reputation List were removed for cost. Scanners
+  # still send Log4j and Java-deserialization probes to the ALB, and those
+  # are no longer blocked here. They pass through to nginx serving static
+  # files: nothing behind this ALB runs Java or processes request bodies
+  # (forms post to endpoints outside the ALB, docs/decisions/0009). The
+  # Common Rule Set, the rate limit and WAF logging remain.
 
   rule {
     name     = "AWSManagedRulesCommonRuleSet"
