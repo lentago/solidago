@@ -89,7 +89,7 @@ options (leave / repurpose / remove).
 | ECS service name | solidago-dev-app |
 | ECS task definition family | solidago-dev-app |
 | ECS task CPU / Memory | 256 / 512 (0.25 vCPU, 512 MiB) |
-| ECS desired count | 2 (one per AZ) |
+| ECS desired count | app: autoscaled 1–6, one task at rest since #277 (was 2, one per AZ) |
 | Container port | 8080 |
 | Container image | nginx:latest (custom config for port 8080) |
 | ALB name | solidago-dev-alb |

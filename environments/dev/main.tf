@@ -275,7 +275,11 @@ module "ecs_autoscaling" {
   ecs_cluster_name = module.ecs.cluster_name
   ecs_service_name = module.ecs.service_name
 
-  min_capacity = 2
+  # One task at rest (#277), scaling out to six under load. Saves about
+  # $9/month. One task means no AZ redundancy for the app at rest: a task or
+  # AZ failure is a gap until ECS replaces the task, and deploys briefly run
+  # two tasks (deployment_maximum_percent = 200) before draining the old one.
+  min_capacity = 1
   max_capacity = 6
 }
 
