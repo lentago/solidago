@@ -142,7 +142,8 @@ resource "aws_sns_topic_subscription" "email" {
 # -----------------------------------------------------------------------------
 # ECS ALARMS
 #
-# These use the AWS/ECS namespace with Container Insights metrics.
+# These use the service-level metrics in the free AWS/ECS namespace, not
+# Container Insights (off since #271).
 # Dimensions: ClusterName + ServiceName to scope to our specific service.
 #
 # Why 80% thresholds? At 80% sustained, the auto-scaler should already

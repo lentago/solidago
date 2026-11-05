@@ -21,9 +21,9 @@ resource "aws_appautoscaling_target" "ecs" {
 # tasks exceeds 70%, add tasks. If it drops significantly below 70%,
 # remove tasks (after the cooldown period).
 #
-# The predefined metric ECSServiceAverageCPUUtilization is provided by
-# Container Insights (which we enabled on the cluster) and represents
-# the average CPU utilization across all running tasks in the service.
+# The predefined metric ECSServiceAverageCPUUtilization is the service's
+# CPUUtilization in the free AWS/ECS namespace, the average across all
+# running tasks. It does not need Container Insights, which is off (#271).
 resource "aws_appautoscaling_policy" "cpu" {
   name               = "${var.project}-${var.environment}-cpu-scaling"
   policy_type        = "TargetTrackingScaling"
