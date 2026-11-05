@@ -19,9 +19,9 @@ resource "aws_cloudwatch_log_group" "app" {
 # the ECS/ContainerInsights namespace, each billed as a CloudWatch custom
 # metric (about $0.30 per metric per month), and a cluster with a few
 # services publishes dozens of them. The service-level CPUUtilization and
-# MemoryUtilization metrics in the AWS/ECS namespace are free and stay. The alarms (modules/monitoring) and the target-tracking
-# scaling policies (modules/ecs-autoscaling) read those, not Container
-# Insights.
+# MemoryUtilization metrics in the AWS/ECS namespace are free and stay. The
+# alarms (modules/monitoring) and the target-tracking scaling policies
+# (modules/ecs-autoscaling) read those, not Container Insights.
 resource "aws_ecs_cluster" "this" {
   name = "${var.project}-${var.environment}-cluster"
 
