@@ -37,7 +37,6 @@ backups and point-in-time recovery, autoscaling, a WAF and alerting:
 | App service | floor of two tasks | floor of one, scaling to six | #277 |
 | Site services (lentago.dev, pondviewlane.com) | on-demand Fargate | Fargate Spot | #277 |
 | WAF | four rules | Common Rule Set plus the per-IP rate limit | #277 |
-| App service CPU | x86_64 | *Pending, not applied:* ARM64 (Graviton). On hold for a decision on whether about $2/month is worth a multi-arch image build (lentago/shared-workflows#108, lentago/site-icecreamtofightwith-com#223) | #277 |
 
 One change does not keep the product claims and is accepted anyway. **The WAF
 change loosens the edge.** Known Bad Inputs and the Amazon IP Reputation List
@@ -54,24 +53,29 @@ in `environments/dev/main.tf`, so an environment built from these modules for
 real use gets the faithful shape unless it chooses otherwise.
 
 Not taken, still open: fck-nat (about $23 a month more), the ElastiCache node,
-and site images on ARM (Spot does not run ARM64). Declined: moving the static
+site images on ARM (Spot does not run ARM64), and the app service on ARM64
+(Graviton). Chris dropped the last from #277 on 2026-11-05: about $2 a month
+did not justify a shared-workflows release and a site-repo bump. The work is in
+the backlog as lentago/shared-workflows#108 and
+lentago/site-icecreamtofightwith-com#223. Declined: moving the static
 sites to S3 and CloudFront (option D of the Tier 4 judgment).
 
 ## Consequences
 
 - Expected run rate falls from about $220 to about $125 a month: about $73
-  from #271 and about $24 from #277 so far (about $26 if the ARM64 step goes
-  ahead).
+  from #271 and about $24 from #277.
 - **Availability at rest is lower.** An outage of us-east-1a takes out private
   egress for both AZs. An RDS instance failure is recovered by restore, not by
   failover. A failure of the one app task, or an interruption of a site's one
   Spot task, is a gap of a few minutes until the replacement passes its
-  health check. drosera's SLO fast-burn tier pages on a gap that long;
-  [lentago/drosera#320](https://github.com/lentago/drosera/issues/320) decides
-  how drosera treats it.
+  health check.
 - **Less filtering at the edge.** Log4j, Java-deserialization and
   known-bad-IP traffic is no longer blocked by a managed rule. It reaches
   nginx serving static files. WAF logging still records every request.
 - ADR-0005's verdict on Fargate Spot ("off-message") no longer holds for the
   site services. Its verdict on fck-nat stands until someone takes that
   option up.
+- drosera's SLO fast-burn tier rides through a short single-task gap on the
+  two Spot-backed sites (Chris, 2026-11-05, option B of
+  [lentago/drosera#320](https://github.com/lentago/drosera/issues/320)). A
+  gap on the one-task app service still pages.
