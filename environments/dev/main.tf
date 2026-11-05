@@ -335,9 +335,6 @@ module "site_lentago" {
   # stays x86_64. A Spot interruption is a gap of a few minutes until the
   # replacement task passes the target group's health check.
   capacity_provider_strategy = [{ capacity_provider = "FARGATE_SPOT", weight = 1 }]
-
-  # Temporary (#277): carries traffic while the service moves to Fargate Spot.
-  bridge_service = true
 }
 
 # --- Promote lentagolabs-dev to its public apex domain: lentago.dev ---
@@ -451,9 +448,6 @@ module "site_pondview" {
   # stays x86_64. A Spot interruption is a gap of a few minutes until the
   # replacement task passes the target group's health check.
   capacity_provider_strategy = [{ capacity_provider = "FARGATE_SPOT", weight = 1 }]
-
-  # Temporary (#277): carries traffic while the service moves to Fargate Spot.
-  bridge_service = true
 }
 
 # --- "Ask the Wiki" answer endpoint for the Essex Crossing HOA wiki ---

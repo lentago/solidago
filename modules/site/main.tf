@@ -317,50 +317,6 @@ resource "aws_ecs_service" "this" {
   }
 }
 
-# --- Temporary bridge service (#277) ---
-# A second, on-demand copy of the site on the same target group. With the AWS
-# provider at 5.x, moving aws_ecs_service.this from launch_type to a capacity
-# provider strategy destroys and recreates it, and a one-task site would be
-# down until the new task passed its health check. With the bridge running,
-# the target group always has a healthy target. wait_for_steady_state makes
-# the apply that creates it finish only once its task is healthy.
-resource "aws_ecs_service" "bridge" {
-  count = var.bridge_service ? 1 : 0
-
-  name            = "${local.name}-bridge"
-  cluster         = var.ecs_cluster_id
-  task_definition = aws_ecs_task_definition.this.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
-
-  platform_version = var.fargate_platform_version
-
-  network_configuration {
-    subnets          = var.app_subnet_ids
-    security_groups  = [var.security_group_id]
-    assign_public_ip = false
-  }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.this.arn
-    container_name   = local.name
-    container_port   = var.container_port
-  }
-
-  deployment_circuit_breaker {
-    enable   = true
-    rollback = true
-  }
-
-  wait_for_steady_state = true
-
-  depends_on = [aws_lb_listener_rule.this]
-
-  tags = {
-    Name = "${local.name}-bridge-service"
-  }
-}
-
 # --- Route 53 alias: hostname -> ALB ---
 # Skipped once the site is promoted to its own apex domain (create_dns_record =
 # false): the hidden preview host stops resolving, but the host-header rule above
