@@ -45,7 +45,7 @@ is torn down; everything cheap-but-painful-to-recreate is kept.
 
 | Resource | Terraform target | Why |
 |----------|------------------|-----|
-| NAT Gateways + EIPs | `module.vpc.aws_nat_gateway.main`, `module.vpc.aws_eip.nat` | ~$2.15/day — the biggest idle cost |
+| NAT Gateway + EIP | `module.vpc.aws_nat_gateway.main`, `module.vpc.aws_eip.nat` | ~$1.20/day (one gateway since #271) — the biggest idle cost |
 | Application Load Balancer | `module.alb` | ~$0.65/day |
 | Primary app ECS service/tasks | `module.ecs.aws_ecs_service.app` | ~$0.80/day of Fargate |
 | Preview-site ECS services/tasks | `module.site_lentago.aws_ecs_service.this` | Fargate tasks |
