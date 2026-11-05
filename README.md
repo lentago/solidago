@@ -64,7 +64,7 @@ A three-tier web application running on AWS, fully managed by Terraform:
 
 **Observability:** CloudWatch dashboard covering ECS, ALB, WAF, RDS, ElastiCache, and NAT Gateway metrics. CloudWatch alarms with SNS email notifications. CloudTrail for API audit logging, with CIS 3.x metric-filter alarms on root use, sign-in without MFA, IAM and trail changes, and unauthorized calls (see the [runbook](docs/RUNBOOK.md#security-alarms-cloudtrail)). A 30-day WAF request log (see the [runbook](docs/RUNBOOK.md#waf-request-log)). AWS Config for compliance rules.
 
-**Cost Management:** AWS Budgets with SNS alerts at 50%, 80%, and 100% of a $100/month threshold.
+**Cost Management:** AWS Budgets with SNS alerts at 50%, 80%, and 100% of a $175/month threshold.
 
 **CI/CD:** This repo runs one Terraform pipeline; workload deploys run from their own repos.
 - **Terraform** — plans on PR (with plan output posted as a PR comment), applies on merge to main. IAM role scoped to the `terraform` GitHub environment via OIDC sub-claim, so only this workflow can mutate infrastructure.
