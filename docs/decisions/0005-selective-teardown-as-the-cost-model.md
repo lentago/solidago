@@ -1,6 +1,6 @@
 # ADR-0005: Selective nightly teardown as the cost model
 
-**Status:** Accepted (2026-07-01; reconstructed 2026-08-13)
+**Status:** Accepted (2026-07-01; reconstructed 2026-08-13). The retrospective's verdict on Fargate Spot is superseded for the site services by [ADR-0010](0010-dev-runs-cost-first-where-it-keeps-the-product-claims.md) (2026-11-05).
 
 ## Context
 
