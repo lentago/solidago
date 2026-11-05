@@ -3,6 +3,11 @@
 output "cluster_id" {
   description = "ECS cluster ID"
   value       = aws_ecs_cluster.this.id
+
+  # A service whose strategy names FARGATE_SPOT can only be created once the
+  # capacity provider is associated with the cluster; everything that takes
+  # the cluster from this output waits for that association.
+  depends_on = [aws_ecs_cluster_capacity_providers.this]
 }
 
 output "cluster_name" {

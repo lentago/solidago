@@ -133,6 +133,38 @@ variable "task_memory" {
   default     = 512
 }
 
+variable "capacity_provider_strategy" {
+  description = "Capacity provider strategy for the site's ECS service, e.g. [{ capacity_provider = \"FARGATE_SPOT\", weight = 1 }]. Empty (the default) keeps launch_type = FARGATE. With provider 5.x, switching an existing service between empty and non-empty replaces it (see bridge_service)."
+  type = list(object({
+    capacity_provider = string
+    weight            = number
+    base              = optional(number, 0)
+  }))
+  default = []
+
+  validation {
+    condition     = alltrue([for s in var.capacity_provider_strategy : contains(["FARGATE", "FARGATE_SPOT"], s.capacity_provider)])
+    error_message = "capacity_provider_strategy entries must name FARGATE or FARGATE_SPOT"
+  }
+
+  # ECS limits: weight 0-1000, base 0-100000, and at least one entry must have
+  # a weight above zero.
+  validation {
+    condition = alltrue([
+      for s in var.capacity_provider_strategy :
+      s.weight >= 0 && s.weight <= 1000 && floor(s.weight) == s.weight &&
+      s.base >= 0 && s.base <= 100000 && floor(s.base) == s.base
+    ]) && (length(var.capacity_provider_strategy) == 0 || anytrue([for s in var.capacity_provider_strategy : s.weight > 0]))
+    error_message = "capacity_provider_strategy weights must be whole numbers 0-1000 with at least one above 0, and bases whole numbers 0-100000"
+  }
+}
+
+variable "bridge_service" {
+  description = "Temporary (#277): run a second, on-demand copy of the site as its own ECS service on the same target group, so the main service can be replaced without a gap. Turn on, apply, change the main service, apply, turn off."
+  type        = bool
+  default     = false
+}
+
 variable "fargate_platform_version" {
   description = "Pinned Fargate platform version (see ecs module rationale — explicit so PV upgrades are deliberate)"
   type        = string

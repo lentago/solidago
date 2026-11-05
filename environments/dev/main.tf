@@ -330,6 +330,9 @@ module "site_lentago" {
 
   # Low-traffic preview: one task is plenty.
   desired_count = 1
+
+  # Temporary (#277): carries traffic while the service moves to Fargate Spot.
+  bridge_service = true
 }
 
 # --- Promote lentagolabs-dev to its public apex domain: lentago.dev ---
@@ -438,6 +441,9 @@ module "site_pondview" {
 
   # Low-traffic preview: one task is plenty.
   desired_count = 1
+
+  # Temporary (#277): carries traffic while the service moves to Fargate Spot.
+  bridge_service = true
 }
 
 # --- "Ask the Wiki" answer endpoint for the Essex Crossing HOA wiki ---
