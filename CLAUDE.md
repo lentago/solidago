@@ -65,11 +65,11 @@ All Terraform commands run from `environments/dev/` (the only environment entry 
 
 | Tier | Subnets | CIDRs | Purpose |
 |------|---------|-------|---------|
-| Public | 2 | 10.0.1.0/24, 10.0.2.0/24 | ALB, NAT Gateways |
+| Public | 2 | 10.0.1.0/24, 10.0.2.0/24 | ALB, NAT Gateway |
 | App | 2 | 10.0.10.0/24, 10.0.11.0/24 | ECS Fargate tasks (private) |
 | Data | 2 | 10.0.20.0/24, 10.0.21.0/24 | RDS, ElastiCache (private) |
 
-Each AZ has its own NAT Gateway.
+Dev runs one NAT Gateway, in us-east-1a, for both AZs (`single_nat_gateway = true` in `environments/dev/main.tf`, #271). The VPC module's default is one NAT Gateway per AZ.
 
 ## Module Dependency Graph
 

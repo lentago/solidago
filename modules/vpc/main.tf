@@ -80,8 +80,17 @@ moved {
   from = aws_subnet.data[1]
   to   = aws_subnet.data["us-east-1b"]
 }
+# One NAT gateway per AZ by default, so each AZ's private subnets keep
+# internet egress if another AZ fails. single_nat_gateway = true builds one
+# gateway (and one EIP) in the first AZ and routes every private subnet
+# through it: cheaper, but egress from all AZs then depends on that one AZ,
+# and traffic from the other AZs pays cross-AZ data transfer to reach it.
+locals {
+  nat_gateway_count = var.single_nat_gateway ? 1 : length(var.public_subnet_cidrs)
+}
+
 resource "aws_eip" "nat" {
-  count  = length(var.public_subnet_cidrs)
+  count  = local.nat_gateway_count
   domain = "vpc"
 
   tags = {
@@ -90,7 +99,7 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "this" {
-  count         = length(var.public_subnet_cidrs)
+  count         = local.nat_gateway_count
   allocation_id = aws_eip.nat[count.index].id
   subnet_id     = aws_subnet.public[var.availability_zones[count.index]].id
 
@@ -120,14 +129,15 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Private route tables — one per AZ, pointing to the AZ-local NAT
+# Private route tables — one per AZ, pointing to the AZ-local NAT (or to the
+# single shared NAT when single_nat_gateway is true)
 resource "aws_route_table" "private" {
   count  = length(var.availability_zones)
   vpc_id = aws_vpc.this.id
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.this[count.index].id
+    nat_gateway_id = aws_nat_gateway.this[var.single_nat_gateway ? 0 : count.index].id
   }
 
   tags = {

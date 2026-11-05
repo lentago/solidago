@@ -37,7 +37,7 @@ variable "availability_zones" {
 
   validation {
     condition     = length(var.availability_zones) >= 2 && length(var.availability_zones) <= 6
-    error_message = "availability_zones must contain between 2 and 6 AZs (two or more for HA; one NAT Gateway is created per AZ)"
+    error_message = "availability_zones must contain between 2 and 6 AZs (two or more for HA; one NAT Gateway is created per AZ unless single_nat_gateway is true)"
   }
 
   validation {
@@ -77,6 +77,12 @@ variable "data_subnet_cidrs" {
     condition     = alltrue([for c in var.data_subnet_cidrs : can(cidrhost(c, 0))]) && length(var.data_subnet_cidrs) >= 2 && length(var.data_subnet_cidrs) <= 6
     error_message = "data_subnet_cidrs must be a list of 2-6 valid IPv4 CIDR blocks (one per AZ)"
   }
+}
+
+variable "single_nat_gateway" {
+  description = "Create one NAT Gateway in the first AZ and route every private subnet through it, instead of one per AZ. Cheaper; egress from every AZ then depends on the first AZ."
+  type        = bool
+  default     = false
 }
 
 variable "enable_flow_logs" {

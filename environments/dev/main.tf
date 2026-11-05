@@ -61,6 +61,11 @@ module "vpc" {
 
   availability_zones = ["us-east-1a", "us-east-1b"]
 
+  # One NAT gateway (in us-east-1a) for both AZs (#271): saves the second
+  # gateway's hours and public IPv4, about $37/month. Dev accepts that losing
+  # us-east-1a also cuts us-east-1b's private egress.
+  single_nat_gateway = true
+
   # Using defaults for all CIDRs — override here if needed
 }
 data "aws_caller_identity" "current" {}
