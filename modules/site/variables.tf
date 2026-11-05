@@ -134,7 +134,7 @@ variable "task_memory" {
 }
 
 variable "capacity_provider_strategy" {
-  description = "Capacity provider strategy for the site's ECS service, e.g. [{ capacity_provider = \"FARGATE_SPOT\", weight = 1 }]. Empty (the default) keeps launch_type = FARGATE. With provider 5.x, switching an existing service between empty and non-empty replaces it; #277 bridged that with a temporary second service on the same target group (see the PRs linked there)."
+  description = "Capacity provider strategy for the site's ECS service, e.g. [{ capacity_provider = \"FARGATE_SPOT\", weight = 1 }]. Empty (the default) keeps launch_type = FARGATE. With provider 5.x, switching an existing service between empty and non-empty destroys and recreates it, so a one-task site is down until the new task passes its health check."
   type = list(object({
     capacity_provider = string
     weight            = number
