@@ -7,7 +7,15 @@ resource "aws_wafv2_web_acl" "this" {
     allow {}
   }
 
-  # --- AWS Managed Rule Groups ---
+  # --- AWS Managed Rule Group ---
+  # One managed group plus the rate limit (#277). Each rule or rule group in
+  # a web ACL is billed at $1/month on top of the ACL itself. Known Bad
+  # Inputs and the Amazon IP Reputation List were removed for cost. Scanners
+  # still send Log4j and Java-deserialization probes to the ALB, and those
+  # are no longer blocked here. They pass through to nginx serving static
+  # files: nothing behind this ALB runs Java or processes request bodies
+  # (forms post to endpoints outside the ALB, docs/decisions/0009). The
+  # Common Rule Set, the rate limit and WAF logging remain.
 
   rule {
     name     = "AWSManagedRulesCommonRuleSet"
@@ -27,50 +35,6 @@ resource "aws_wafv2_web_acl" "this" {
     visibility_config {
       cloudwatch_metrics_enabled = true
       metric_name                = "${var.project}-${var.environment}-common-rules"
-      sampled_requests_enabled   = true
-    }
-  }
-
-  rule {
-    name     = "AWSManagedRulesKnownBadInputsRuleSet"
-    priority = 20
-
-    override_action {
-      none {}
-    }
-
-    statement {
-      managed_rule_group_statement {
-        name        = "AWSManagedRulesKnownBadInputsRuleSet"
-        vendor_name = "AWS"
-      }
-    }
-
-    visibility_config {
-      cloudwatch_metrics_enabled = true
-      metric_name                = "${var.project}-${var.environment}-known-bad-inputs"
-      sampled_requests_enabled   = true
-    }
-  }
-
-  rule {
-    name     = "AWSManagedRulesAmazonIpReputationList"
-    priority = 30
-
-    override_action {
-      none {}
-    }
-
-    statement {
-      managed_rule_group_statement {
-        name        = "AWSManagedRulesAmazonIpReputationList"
-        vendor_name = "AWS"
-      }
-    }
-
-    visibility_config {
-      cloudwatch_metrics_enabled = true
-      metric_name                = "${var.project}-${var.environment}-ip-reputation"
       sampled_requests_enabled   = true
     }
   }

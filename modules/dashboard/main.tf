@@ -170,8 +170,6 @@ resource "aws_cloudwatch_dashboard" "this" {
           stat    = "Sum"
           metrics = [
             ["AWS/WAFV2", "BlockedRequests", "WebACL", var.waf_web_acl_name, "Region", var.region, "Rule", "AWSManagedRulesCommonRuleSet"],
-            ["AWS/WAFV2", "BlockedRequests", "WebACL", var.waf_web_acl_name, "Region", var.region, "Rule", "AWSManagedRulesKnownBadInputsRuleSet"],
-            ["AWS/WAFV2", "BlockedRequests", "WebACL", var.waf_web_acl_name, "Region", var.region, "Rule", "AWSManagedRulesAmazonIpReputationList"],
             ["AWS/WAFV2", "BlockedRequests", "WebACL", var.waf_web_acl_name, "Region", var.region, "Rule", "RateLimitPerIP"]
           ]
         }
