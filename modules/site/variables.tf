@@ -146,6 +146,17 @@ variable "capacity_provider_strategy" {
     condition     = alltrue([for s in var.capacity_provider_strategy : contains(["FARGATE", "FARGATE_SPOT"], s.capacity_provider)])
     error_message = "capacity_provider_strategy entries must name FARGATE or FARGATE_SPOT"
   }
+
+  # ECS limits: weight 0-1000, base 0-100000, and at least one entry must have
+  # a weight above zero.
+  validation {
+    condition = alltrue([
+      for s in var.capacity_provider_strategy :
+      s.weight >= 0 && s.weight <= 1000 && floor(s.weight) == s.weight &&
+      s.base >= 0 && s.base <= 100000 && floor(s.base) == s.base
+    ]) && (length(var.capacity_provider_strategy) == 0 || anytrue([for s in var.capacity_provider_strategy : s.weight > 0]))
+    error_message = "capacity_provider_strategy weights must be whole numbers 0-1000 with at least one above 0, and bases whole numbers 0-100000"
+  }
 }
 
 variable "bridge_service" {
