@@ -705,9 +705,13 @@ module "aws_config" {
 module "budgets" {
   source = "../../modules/budgets"
 
-  project               = var.project
-  environment           = var.environment
-  monthly_budget_amount = "100"
+  project     = var.project
+  environment = var.environment
+
+  # Set above the expected run rate after #271 (about $150/month including
+  # GuardDuty), so the 100% notification means an anomaly rather than an
+  # ordinary month.
+  monthly_budget_amount = "175"
   sns_topic_arn         = module.monitoring.sns_topic_arn
 
   # GuardDuty's alarm (#243): about $6 a month expected (modules/guardduty

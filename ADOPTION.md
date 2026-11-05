@@ -121,7 +121,7 @@ Everything you need, in one list. No hunting through other repos.
 > the rest (Route 53, CloudTrail, Config, KMS, S3) ~$5. The selective teardown
 > in [`docs/RUNBOOK.md`](docs/RUNBOOK.md) drops the always-on resources when
 > the stack is idle, bringing a mostly-idle stack to **roughly $40/month**.
-> Budget alerts fire by email at 50/80/100% of a $100/month threshold.
+> Budget alerts fire by email at 50/80/100% of a $175/month threshold.
 
 **Time:** BOOTSTRAP estimates ~45 minutes for a fresh account with a registered
 domain, plus DNS-propagation and ACM-validation wait time (usually under an
@@ -177,7 +177,7 @@ points at the tracking issue.
 | Cross-repo tfstate role `dotgithub-github-actions-terraform` trusting `lentago/.github` | `modules/iam/main.tf:~500–560` + `dotgithub_repo` input | Delete if you have no shared-workflows repo needing state access | mechanical |
 | Terraform-pipeline OIDC trusts `repo:<org>/solidago:environment:terraform` (apply) and `…:environment:terraform-plan` (plan) | `github_org` / `github_repo` inputs of `module.iam` in `environments/dev/main.tf`; the first apply creates both roles (BOOTSTRAP Step 7 verifies them) | Your org/repo | mechanical |
 | Axiom datasets `cjp-solidago-ecs` / `cjp-solidago-alb` (FireLens sidecars, ingest secrets, ALB-log shipper) | `axiom_ecs_dataset` / `axiom_alb_dataset` in `terraform.tfvars`; our values are set in `.github/workflows/terraform.yml:100–101,203–204` | Delete those two workflow lines and leave both variables `""` to skip Axiom (apps log to CloudWatch via plain awslogs, no shipper Lambda); or set your own datasets and populate the two ingest secrets out-of-band | mechanical — optional since [#188](https://github.com/lentago/solidago/issues/188), like Grafana Cloud |
-| Monthly budget threshold `$100` | `environments/dev/main.tf` (`module.budgets`) | Your budget | mechanical |
+| Monthly budget threshold `$175` | `environments/dev/main.tf` (`module.budgets`) | Your budget | mechanical |
 
 **On plan cleanliness:** our own repo's CI plans are *not* clean — three ECS
 task definitions and one SNS subscription always show as pending changes

@@ -64,7 +64,7 @@ A three-tier web application running on AWS, fully managed by Terraform:
 
 **Observability:** CloudWatch dashboard covering ECS, ALB, WAF, RDS, ElastiCache, and NAT Gateway metrics. CloudWatch alarms with SNS email notifications. CloudTrail for API audit logging, with CIS 3.x metric-filter alarms on root use, sign-in without MFA, IAM and trail changes, and unauthorized calls (see the [runbook](docs/RUNBOOK.md#security-alarms-cloudtrail)). A 30-day WAF request log (see the [runbook](docs/RUNBOOK.md#waf-request-log)). AWS Config for compliance rules.
 
-**Cost Management:** AWS Budgets with SNS alerts at 50%, 80%, and 100% of a $100/month threshold.
+**Cost Management:** AWS Budgets with SNS alerts at 50%, 80%, and 100% of a $175/month threshold.
 
 **CI/CD:** This repo runs one Terraform pipeline; workload deploys run from their own repos.
 - **Terraform** — plans on PR (with plan output posted as a PR comment), applies on merge to main. IAM role scoped to the `terraform` GitHub environment via OIDC sub-claim, so only this workflow can mutate infrastructure.
@@ -226,7 +226,7 @@ For the detailed, step-by-step deployment reference, see [docs/BOOTSTRAP.md](doc
 
 ## Cost
 
-With all resources running 24/7, the environment costs about $212–222/month (Cost Explorer, August–October 2026). The largest line items in October 2026 were NAT Gateways (~$68), ECS Fargate (~$37), RDS (~$29), CloudWatch (~$23, almost all custom metrics), the ALB (~$17), public IPv4 addresses (~$15), ElastiCache (~$10), and WAF (~$9). Budget alerts notify via email at 50%, 80%, and 100% of a $100/month threshold. That threshold sits below the run rate by choice ([#260](https://github.com/lentago/solidago/issues/260)), so at that run rate all three fire every month. GuardDuty (#243) adds about $6/month after its 30-day free trial (breakdown in the [`modules/guardduty`](modules/guardduty/main.tf) header) and has its own $10/month budget, which alerts on actual or forecast spend above it.
+With all resources running 24/7, the environment cost $212–222/month from August through October 2026 (Cost Explorer). The cost trims in [#271](https://github.com/lentago/solidago/issues/271) take about $73/month off that: one NAT gateway instead of two, Container Insights off, and a Single-AZ dev database. The expected run rate after them is about $150/month, including GuardDuty. The largest expected line items are then ECS Fargate (~$37), the NAT gateway (~$34), the ALB (~$17), RDS (~$14), public IPv4 addresses (~$11), ElastiCache (~$10), and WAF (~$9); CloudWatch drops to about $1. Budget alerts notify via email at 50%, 80%, and 100% of a $175/month threshold, set above the expected run rate so that the 100% alert means an anomaly. GuardDuty (#243) adds about $6/month after its 30-day free trial (breakdown in the [`modules/guardduty`](modules/guardduty/main.tf) header) and has its own $10/month budget, which alerts on actual or forecast spend above it.
 
 ## Related Repositories
 

@@ -344,7 +344,7 @@ Estimated monthly cost with all resources running 24/7:
 
 **With daily destroy/apply (evenings and weekends only):** Significantly less. NAT Gateways and ALB are the biggest line items and only charge when running.
 
-Budget alerts are configured at 50%, 80%, and 100% of $100/month via SNS.
+Budget alerts are configured at 50%, 80%, and 100% of $175/month via SNS.
 
 ---
 
