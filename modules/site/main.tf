@@ -296,6 +296,10 @@ resource "aws_ecs_service" "this" {
 
   force_new_deployment = true
 
+  # A one-task site: the apply that creates, replaces or redeploys the service
+  # finishes only once its task is healthy, and fails if it never gets there.
+  wait_for_steady_state = true
+
   # The target group is only "associated with a load balancer" once its
   # listener rule exists. Without this, CreateService can race and fail with
   # "target group does not have an associated load balancer" (same class of

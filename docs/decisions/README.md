@@ -28,3 +28,4 @@ that sweep.
 | [0007](0007-full-codename-rename-including-live-aws-and-tfstate.md) | Full codename rename, including live AWS resources and the tfstate backend | 2026-07-08 |
 | [0008](0008-dev-tier-rds-deletion-protection-off-no-final-snapshot.md) | Dev-tier RDS runs with deletion protection off and no final snapshot | 2026-03-19 |
 | [0009](0009-log-groups-stay-on-the-default-key-except-visitor-text.md) | CloudWatch log groups stay on the default key, except the one that holds visitor text | 2026-11-02 |
+| [0010](0010-dev-runs-cost-first-where-it-keeps-the-product-claims.md) | Dev runs cost-first where it keeps the product claims | 2026-11-05 |

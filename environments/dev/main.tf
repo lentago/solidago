@@ -331,6 +331,11 @@ module "site_lentago" {
   # Low-traffic preview: one task is plenty.
   desired_count = 1
 
+  # Fargate Spot (#277, ADR-0010). Spot does not run ARM64, so this site
+  # stays x86_64. A Spot interruption is a gap of a few minutes until the
+  # replacement task passes the target group's health check.
+  capacity_provider_strategy = [{ capacity_provider = "FARGATE_SPOT", weight = 1 }]
+
   # Temporary (#277): carries traffic while the service moves to Fargate Spot.
   bridge_service = true
 }
@@ -441,6 +446,11 @@ module "site_pondview" {
 
   # Low-traffic preview: one task is plenty.
   desired_count = 1
+
+  # Fargate Spot (#277, ADR-0010). Spot does not run ARM64, so this site
+  # stays x86_64. A Spot interruption is a gap of a few minutes until the
+  # replacement task passes the target group's health check.
+  capacity_provider_strategy = [{ capacity_provider = "FARGATE_SPOT", weight = 1 }]
 
   # Temporary (#277): carries traffic while the service moves to Fargate Spot.
   bridge_service = true
