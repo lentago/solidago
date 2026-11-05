@@ -60,7 +60,7 @@ A three-tier web application running on AWS, fully managed by Terraform:
 
 **Data:** RDS PostgreSQL and ElastiCache (Valkey) in private subnets. Secrets Manager for credential management.
 
-**Security:** WAFv2 Web ACL on the ALB with AWS Managed Rules (Common Rule Set, Known Bad Inputs, IP Reputation List) and a custom rate-limiting rule. GuardDuty threat detection, with findings of medium severity and above emailed to the alert topic (see the [runbook](docs/RUNBOOK.md#guardduty-findings)). KMS customer-managed key for encryption at rest. Security groups with least-privilege chaining — each tier can only reach the tier it needs.
+**Security:** WAFv2 Web ACL on the ALB with the AWS Managed Common Rule Set and a custom rate-limiting rule. GuardDuty threat detection, with findings of medium severity and above emailed to the alert topic (see the [runbook](docs/RUNBOOK.md#guardduty-findings)). KMS customer-managed key for encryption at rest. Security groups with least-privilege chaining — each tier can only reach the tier it needs.
 
 **Observability:** CloudWatch dashboard covering ECS, ALB, WAF, RDS, ElastiCache, and NAT Gateway metrics. CloudWatch alarms with SNS email notifications. CloudTrail for API audit logging, with CIS 3.x metric-filter alarms on root use, sign-in without MFA, IAM and trail changes, and unauthorized calls (see the [runbook](docs/RUNBOOK.md#security-alarms-cloudtrail)). A 30-day WAF request log (see the [runbook](docs/RUNBOOK.md#waf-request-log)). AWS Config for compliance rules.
 
@@ -204,7 +204,7 @@ Security groups are centralized in one module to avoid Terraform resource confli
 
 ### WAF with Managed Rules, Not Custom Rules
 
-AWS Managed Rule Groups are free, auto-updated by AWS's threat research team, and cover the OWASP Top 10. Custom rules add complexity without meaningful benefit for a static content site. The rate-limiting rule is the only custom rule — simple and effective.
+AWS Managed Rule Groups are auto-updated by AWS's threat research team, and the Common Rule Set covers the OWASP Top 10. Each group costs $1/month per web ACL, so this stack runs only the Common Rule Set ([#277](https://github.com/lentago/solidago/issues/277)). Custom rules add complexity without meaningful benefit for a static content site. The rate-limiting rule is the only custom rule — simple and effective.
 
 ### CloudWatch Over Third-Party Observability
 
