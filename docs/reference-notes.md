@@ -46,8 +46,7 @@
 | App-private subnet AZ2 | subnet-01354c329bfdeec58 (10.0.11.0/24) |
 | Data-private subnet AZ1 | subnet-0ede14a937169580e (10.0.20.0/24) |
 | Data-private subnet AZ2 | subnet-05c868aa8fdf71042 (10.0.21.0/24) |
-| NAT Gateway AZ1 IP | 32.192.220.190 |
-| NAT Gateway AZ2 IP | 98.90.48.147 |
+| NAT Gateway IP (us-east-1a; egress for both AZs since #271) | 32.192.220.190 |
 
 ---
 
@@ -175,7 +174,7 @@ _Quick-reference for architectural decisions made along the way. Full ADRs live 
 |---|----------|-----------|------|
 | 1 | AdministratorAccess on cpitzi-iac | Sandbox account, sole user. Scoped permissions would create constant friction. Will scope down for CI/CD roles. | 2026-02-27 |
 | 2 | AES256 encryption on state bucket (not KMS yet) | Avoids KMS dependency before Phase 2. Will upgrade to CMK later. **Superseded by #35 (issue #15).** | 2026-02-27 |
-| 3 | 2 NAT Gateways (one per AZ) | Production-correct HA pattern. Accepted ~$65/mo cost over single-NAT savings. | 2026-02-27 |
+| 3 | 2 NAT Gateways (one per AZ) | Production-correct HA pattern. Accepted ~$65/mo cost over single-NAT savings. **Superseded by #271: dev runs one NAT Gateway (`single_nat_gateway = true`) to save ~$37/mo.** | 2026-02-27 |
 | 4 | count over for_each for VPC subnets | Simpler to learn; fine for this environment. Can refactor to for_each later for better state handling. | 2026-02-27 |
 | 5 | Single KMS CMK for all encryption | $1/mo per key; this environment doesn't need per-service key isolation. Key policy grants scoped to specific roles. | 2026-02-28 |
 | 6 | Separate ECS task execution vs task role | Execution role = ECS control plane (image pull, logs, secrets injection). Task role = application runtime AWS access. Least-privilege separation. | 2026-02-28 |
