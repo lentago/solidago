@@ -578,6 +578,18 @@ module "rds" {
   data_subnet_ids       = module.vpc.data_subnet_ids
   rds_security_group_id = module.security_groups.rds_security_group_id
   kms_key_arn           = module.kms.key_arn
+
+  # Single-AZ for dev (#271): halves the instance and storage cost (about
+  # $14/month). Backups and point-in-time recovery are unchanged; what is
+  # lost is the standby, so an AZ outage or instance failure means a
+  # restore, not a failover. The module default stays Multi-AZ for any
+  # other environment.
+  multi_az = false
+
+  # Dev applies modifications at apply time rather than in the Sunday
+  # maintenance window, so a merged change is live when the apply finishes
+  # and later plans do not keep showing it.
+  apply_immediately = true
 }
 
 module "s3" {

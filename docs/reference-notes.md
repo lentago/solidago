@@ -117,7 +117,7 @@ options (leave / repurpose / remove).
 | RDS port | 5432 |
 | RDS engine | PostgreSQL 16 (db.t4g.micro Graviton) |
 | RDS storage | 20 GiB gp3, autoscale to 100 GiB |
-| RDS Multi-AZ | Yes (synchronous standby) |
+| RDS Multi-AZ | No in dev since #271 (Single-AZ; the module default is Multi-AZ) |
 | RDS database name | awslab |
 | RDS master username | dbadmin |
 | RDS master secret ARN | arn:aws:secretsmanager:us-east-1:`<ACCOUNT_ID>`:secret:rds!db-`<SECRET_SUFFIX>` |

@@ -81,6 +81,12 @@ variable "multi_az" {
   default     = true
 }
 
+variable "apply_immediately" {
+  description = "Apply instance modifications as soon as Terraform makes them, instead of queuing them for the next maintenance window. Some modifications (an instance class change, for example) restart the instance."
+  type        = bool
+  default     = false
+}
+
 variable "backup_retention_period" {
   description = "Number of days to retain automated backups"
   type        = number
