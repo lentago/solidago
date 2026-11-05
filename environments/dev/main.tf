@@ -580,6 +580,11 @@ module "rds" {
   # restore, not a failover. The module default stays Multi-AZ for any
   # other environment.
   multi_az = false
+
+  # Dev applies modifications at apply time rather than in the Sunday
+  # maintenance window, so a merged change is live when the apply finishes
+  # and later plans do not keep showing it.
+  apply_immediately = true
 }
 
 module "s3" {

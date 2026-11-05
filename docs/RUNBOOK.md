@@ -146,7 +146,7 @@ key is kept and never delete-scheduled, so even `RDS_MODE=destroy` is safe
 from that trap here — the trap is specifically a **full-destroy** hazard (see
 below).
 
-`aws rds stop-db-instance` works on the Multi-AZ instance this stack provisions.
+`aws rds stop-db-instance` works on the instance this stack provisions (Single-AZ in dev since #271; stopping works for a Multi-AZ PostgreSQL instance too).
 
 To reclaim storage cost for an idle longer than 7 days, take a snapshot and use
 `RDS_MODE=destroy`; standup will recreate an empty instance (restore from the

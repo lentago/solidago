@@ -107,6 +107,9 @@ resource "aws_db_instance" "this" {
   # High availability
   multi_az = var.multi_az
 
+  # Modifications wait for maintenance_window unless this is true
+  apply_immediately = var.apply_immediately
+
   # Parameter group
   parameter_group_name = aws_db_parameter_group.this.name
 
