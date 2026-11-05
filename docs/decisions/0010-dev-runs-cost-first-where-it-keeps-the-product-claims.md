@@ -23,7 +23,8 @@ Tier 4 judgment, "tweaks that keep every product claim"
 ## Decision
 
 For the dev environment, cost wins over production faithfulness wherever the
-change keeps what the platform claims to demonstrate. The platform still
+change keeps what the platform claims to demonstrate, with one accepted
+exception (the WAF, below). The platform still
 demonstrates multi-AZ networking, private tiers, a managed database with
 backups and point-in-time recovery, autoscaling, a WAF and alerting:
 
@@ -36,7 +37,16 @@ backups and point-in-time recovery, autoscaling, a WAF and alerting:
 | App service | floor of two tasks | floor of one, scaling to six | #277 |
 | Site services (lentago.dev, pondviewlane.com) | on-demand Fargate | Fargate Spot | #277 |
 | WAF | four rules | Common Rule Set plus the per-IP rate limit | #277 |
-| App service CPU | x86_64 | ARM64 (Graviton), once the image builds multi-arch | #277 |
+| App service CPU | x86_64 | *Pending, not applied:* ARM64 (Graviton). On hold for a decision on whether about $2/month is worth a multi-arch image build (lentago/shared-workflows#108, lentago/site-icecreamtofightwith-com#223) | #277 |
+
+One change does not keep the product claims and is accepted anyway. **The WAF
+change loosens the edge.** Known Bad Inputs and the Amazon IP Reputation List
+blocked Log4j, Java-deserialization and known-bad-IP traffic before it reached
+the ALB's targets; that traffic now reaches nginx. Chris accepted this for
+about $2 a month in #277. The basis is that nothing behind the ALB runs Java or
+processes request bodies, and that the Common Rule Set, the rate limit and WAF
+logging remain. If a workload that does run Java or parse request input is
+added behind the ALB, revisit this.
 
 The modules keep the production-faithful defaults: one NAT gateway per AZ,
 Multi-AZ RDS, an autoscaling floor of two, and on-demand Fargate. Dev opts out
@@ -50,7 +60,8 @@ sites to S3 and CloudFront (option D of the Tier 4 judgment).
 ## Consequences
 
 - Expected run rate falls from about $220 to about $125 a month: about $73
-  from #271 and about $26 from #277.
+  from #271 and about $24 from #277 so far (about $26 if the ARM64 step goes
+  ahead).
 - **Availability at rest is lower.** An outage of us-east-1a takes out private
   egress for both AZs. An RDS instance failure is recovered by restore, not by
   failover. A failure of the one app task, or an interruption of a site's one
